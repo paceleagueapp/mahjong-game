@@ -41,12 +41,22 @@
     .hand-legend .pair { border-color: #43caa2; }
     .hand-legend .run { border-color: #e9b94d; }
     .selection-hint { min-height: 1.3em; margin-top: 6px; font-size: 12px; color: #f7d985; }
+    .progress { margin-top: 9px; padding: 9px; border-radius: 9px; background: #263c33; font-size: 12px; line-height: 1.6; white-space: pre-line; }
+    .progress b { color: #ffe09a; }
+    .tile2d { position: relative; }
+    .tile2d .distance { position: absolute; right: 1px; bottom: 1px; padding: 0 2px; border-radius: 3px; background: #18372c; color: #fff; font-size: 9px; line-height: 14px; }
+    .tile2d.best .distance { background: #b77620; }
+    .win-detail { padding: 8px; border-radius: 8px; background: #23483a; font-size: 13px; text-align: left; line-height: 1.6; white-space: pre-line; }
     .game-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
     .game-controls button:disabled { opacity: .45; cursor: default; }
     .game-controls button.caution { background: #9b6227; }
     .claim-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .match-bar { margin-top: 9px; padding: 9px 11px; border-radius: 10px; background: #18372c; color: #e9f3eb; font-size: 13px; line-height: 1.5; }
     .result { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(90%, 430px); max-height: 85%; overflow: auto; padding: 18px; border: 2px solid #dfbe70; border-radius: 16px; background: #102b24f5; box-shadow: 0 12px 35px #000b; text-align: center; }
+    .result.victory { border-color: #ffe18c; box-shadow: 0 0 0 999px #0005, 0 0 40px #e7bd4b; animation: victoryEnter .6s ease-out both; }
+    .result.victory h2 { color: #ffe18c; font-size: 28px; text-shadow: 0 0 18px #f9d96b; }
+    @keyframes victoryEnter { from { opacity: 0; transform: translate(-50%, -40%) scale(.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+    @media (prefers-reduced-motion: reduce) { .result.victory { animation: none; } }
     .result[hidden] { display: none; }
     .result h2 { margin: 0 0 8px; font-size: 23px; }
     .result p { margin: 8px 0; line-height: 1.5; }
@@ -77,7 +87,7 @@
       <div><b>3D 홍콩 마작</b><div style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
       <div class="actions"><button id="deal">새 게임</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
-    <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div><details id="discardViewer" class="discard-viewer" hidden><summary><span id="latestDiscardPlayer"></span><strong id="latestDiscardTile"></strong><span id="latestDiscardState"></span></summary><div id="discardHistory" class="discard-history"></div></details><section id="result" class="result" hidden aria-live="assertive"><h2 id="resultTitle"></h2><p id="resultText"></p><p id="resultScore" class="score"></p><button id="nextHand">다음 판</button></section></div>
+    <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div><details id="discardViewer" class="discard-viewer" hidden><summary><span id="latestDiscardPlayer"></span><strong id="latestDiscardTile"></strong><span id="latestDiscardState"></span></summary><div id="discardHistory" class="discard-history"></div></details><section id="result" class="result" hidden aria-live="assertive"><h2 id="resultTitle"></h2><p id="resultText"></p><div id="winDetail" class="win-detail" hidden></div><p id="resultScore" class="score"></p><button id="nextHand">다음 판</button></section></div>
     <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 가운데 최근 버림패를 누르면 전체 버림패가 보입니다. 상대 패는 뒷면만 표시합니다.</div>
     <div class="game-controls">
       <button id="drawTile" disabled>패 뽑기</button>
@@ -94,16 +104,17 @@
         <li><b>새 게임</b>을 누르면 첫 판은 동(나) 14장으로 시작합니다. 동은 패를 하나 선택해 버립니다. 한 판이 끝나면 <b>다음 판</b>으로 이어지고 동 자리는 순서대로 바뀝니다.</li>
         <li>그다음부터는 자기 차례에 <b>패 뽑기</b>를 누르고, 손패 하나를 눌러 선택한 뒤 <b>선택한 패 버리기</b>를 누릅니다. 상대 차례는 자동으로 진행됩니다.</li>
         <li><b>하늘색</b>은 방금 뽑은 패입니다. 손패의 <b>보라색</b>은 완성된 묶음, <b>초록색</b>은 같은 패 짝, <b>노란색</b>은 연속패 후보입니다. 색은 버릴 패를 고르는 참고 표시이며 화료를 보장하지 않습니다.</li>
+        <li>패 아래의 숫자는 그 패를 버린 뒤 화료까지 남은 거리입니다. <b>0이면 대기</b>이며, 어떤 패를 뽑거나 가져오면 이기는지 표시됩니다. 작은 숫자가 유리하지만 상대가 이미 버린 패도 살펴보세요.</li>
         <li>목표는 <b>세 장짜리 묶음 네 개와 같은 패 두 장</b>입니다. 묶음은 같은 패 세 장(퐁) 또는 같은 종류의 연속 숫자 세 장(치)입니다. 네 장의 같은 패(깡)는 묶음 하나로 세고 보충패를 뽑습니다.</li>
         <li>상대가 버린 패로 완성하면 <b>화료</b>를 누를 수 있습니다. 퐁·깡은 누구의 버림패든, 치는 바로 앞 플레이어의 버림패만 가져올 수 있습니다. 가져온 묶음은 공개하고 패 한 장을 버립니다.</li>
         <li>꽃·계절패는 즉시 공개하고 벽 뒤쪽에서 보충패를 가져옵니다. 벽이 떨어지면 유국입니다.</li>
       </ol>
-      <p>처음 배우는 용도로 승리 여부와 관계없이 동 자리를 한 번씩 맡는 4판을 진행하며 승리한 판 수를 셉니다. 점수·최소 번수·특수 화료형은 적용하지 않습니다. <a href="https://c.tabletopia.com/games/old-hong-kong-mahjong/rules/mahjong-rules/en" target="_blank" rel="noopener">홍콩식 마작 규칙 참고</a></p>
+      <p>처음 배우는 용도로 승리 여부와 관계없이 동 자리를 한 번씩 맡는 4판을 진행합니다. 화료마다 기본 100점, 직접 뽑기 30점, 손패에 남긴 묶음마다 10점, 깡마다 15점, 꽃·계절패마다 5점을 받습니다. 이는 연습용 점수이며 정식 홍콩식 번수·특수 화료형은 적용하지 않습니다. <a href="https://c.tabletopia.com/games/old-hong-kong-mahjong/rules/mahjong-rules/en" target="_blank" rel="noopener">홍콩식 마작 규칙 참고</a></p>
     </details>
   </main>
   <script type="module">
     import { SIDE_NAMES, wallOrder, breakIndex, consumedIndices, dealSequence } from './wall.js?v=gameplay-1';
-    import { isFlower, sortTiles, canWin, chowOptions, chooseDiscard, handHints } from './game.js?v=discard-ux-1';
+    import { isFlower, sortTiles, canWin, chowOptions, chooseDiscard, handHints, shanten, waitingTiles, winningShape } from './game.js?v=progress-1';
     const host = document.getElementById('scene');
     const status = document.getElementById('status');
     const playersEl = document.getElementById('players');
@@ -286,7 +297,23 @@
     const matchBar = document.getElementById('matchBar');
     const discardViewer = document.getElementById('discardViewer');
     const playerLabel = player => `${SIDE_NAMES[(player - (match?.dealer || 0) + 4) % 4]}${player === 0 ? '(나)' : ''}`;
-    const scoreText = () => match.wins.map((wins, player) => `${player === 0 ? '나' : `상대${player}`} ${wins}승`).join(' · ');
+    const scoreText = () => match.wins.map((wins, player) => `${player === 0 ? '나' : `상대${player}`} ${wins}승/${match.points[player]}점`).join(' · ');
+    function visibleCopies(tile) {
+      let seen = game.hands[0].filter(value => value === tile).length;
+      for (const melds of game.melds) for (const meld of melds) seen += meld.tiles.filter(value => value === tile).length;
+      for (const pile of game.discards) seen += pile.filter(value => value === tile).length;
+      return Math.max(0, 4 - seen);
+    }
+    function discardChoices(hand, openMelds) {
+      const choices = new Map();
+      hand.forEach(tile => {
+        if (choices.has(tile)) return;
+        const copy = [...hand];
+        copy.splice(copy.indexOf(tile), 1);
+        choices.set(tile, { distance: shanten(copy, openMelds), waits: waitingTiles(copy, openMelds) });
+      });
+      return choices;
+    }
     function renderDiscardViewer() {
       discardViewer.hidden = !game?.lastDiscard;
       if (discardViewer.hidden) return;
@@ -360,11 +387,13 @@
         const row = document.createElement('div');
         row.className = 'hand';
         const hints = player === 0 ? handHints(hand) : [];
+        const choices = player === 0 && game?.phase === 'discard' && game.current === 0 ? discardChoices(hand, game.melds[0].length) : null;
+        const bestDistance = choices ? Math.min(...[...choices.values()].map(choice => choice.distance)) : null;
         hand.forEach((label, index) => {
           const shown = player === 0 || game?.winner === player;
           const tile = document.createElement(player === 0 ? 'button' : 'div');
           if (player === 0) tile.type = 'button';
-          tile.className = 'tile2d' + (shown ? (label === '中' ? ' red' : label === '發' ? ' green' : '') : ' back') + (player === 0 ? ` hint-${hints[index]}` : '') + (player === 0 && game?.drawnIndex === index ? ' drawn' : '') + (player === 0 && game?.selected === index ? ' selected' : '');
+          tile.className = 'tile2d' + (shown ? (label === '中' ? ' red' : label === '發' ? ' green' : '') : ' back') + (player === 0 ? ` hint-${hints[index]}` : '') + (player === 0 && game?.drawnIndex === index ? ' drawn' : '') + (player === 0 && game?.selected === index ? ' selected' : '') + (choices?.get(label)?.distance === bestDistance ? ' best' : '');
           if (shown) tile.textContent = label;
           else tile.setAttribute('aria-label', '숨긴 패');
           if (player === 0) tile.addEventListener('click', () => {
@@ -373,9 +402,30 @@
             renderGame();
           });
           if (player === 0) tile.title = hints[index] === 'set' ? '완성된 묶음의 일부' : hints[index] === 'pair' ? '같은 패 짝' : hints[index] === 'run' ? '연속패 후보' : '현재 연결이 적은 패';
+          if (choices) {
+            const badge = document.createElement('span');
+            badge.className = 'distance';
+            badge.textContent = choices.get(label).distance === 0 ? '대기' : `${choices.get(label).distance}↓`;
+            tile.appendChild(badge);
+          }
           row.appendChild(tile);
         });
         panel.appendChild(row);
+        if (player === 0 && game && game.phase !== 'done') {
+          const progress = document.createElement('div');
+          progress.className = 'progress';
+          if (choices) {
+            const selected = game.selected === null ? null : choices.get(hand[game.selected]);
+            const best = [...choices.values()].filter(choice => choice.distance === bestDistance);
+            progress.textContent = `버린 뒤 최단 ${bestDistance === 0 ? '대기' : `${bestDistance}장 거리`} · 권장 ${[...choices].filter(([, choice]) => choice.distance === bestDistance).map(([tile]) => tile).join(' · ')}`;
+            if (selected) progress.textContent += `\n선택한 ${hand[game.selected]} 버리기 → ${selected.distance === 0 ? '대기' : `${selected.distance}장 거리`}${selected.waits.length ? ` · 대기패 ${selected.waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ')}` : ''}`;
+          } else if (hand.length % 3 === 1) {
+            const distance = shanten(hand, game.melds[0].length);
+            const waits = waitingTiles(hand, game.melds[0].length);
+            progress.textContent = distance === 0 ? `대기패: ${waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ') || '남은 패 없음'}` : `화료까지 ${distance}장 거리`;
+          }
+          if (progress.textContent) panel.appendChild(progress);
+        }
         if (game) {
           const flowers = document.createElement('div');
           flowers.className = 'flowers';
@@ -409,18 +459,25 @@
       status.textContent = `${game.message}\n벽 ${remaining()}장 남음`;
       matchBar.textContent = `${match.hand}/4판 · 동: ${playerLabel(match.dealer)} · ${scoreText()}`;
       result.hidden = game.phase !== 'done';
+      result.classList.toggle('victory', game.phase === 'done' && game.winner === 0);
       if (game.phase === 'done') {
-        document.getElementById('resultTitle').textContent = match.hand === 4 ? '4판 대국 종료' : (game.winner === null ? '유국' : `${playerLabel(game.winner)} 화료!`);
+        document.getElementById('resultTitle').textContent = game.winner === 0 ? '🎉 화료! 이겼습니다' : match.hand === 4 ? '4판 대국 종료' : (game.winner === null ? '유국' : `${playerLabel(game.winner)} 화료!`);
         const handResult = game.winner === null ? '벽의 패를 모두 사용했습니다.' : `${playerLabel(game.winner)} 플레이어가 ${game.winMethod}로 이겼습니다. 승자의 패는 아래에 공개됩니다.`;
-        const leaders = match.wins.map((wins, player) => ({ wins, player })).filter(entry => entry.wins === Math.max(...match.wins));
+        const leaders = match.points.map((points, player) => ({ points, player })).filter(entry => entry.points === Math.max(...match.points));
         document.getElementById('resultText').textContent = match.hand === 4
-          ? `${handResult} 최종 최다승: ${leaders.map(entry => entry.player === 0 ? '나' : `상대${entry.player}`).join(', ')}.`
+          ? `${handResult} 최종 최고점: ${leaders.map(entry => entry.player === 0 ? '나' : `상대${entry.player}`).join(', ')}.`
           : handResult;
+        const detail = document.getElementById('winDetail');
+        detail.hidden = game.winner === null;
+        if (game.winner !== null) {
+          const shape = winningShape(game.hands[game.winner], game.melds[game.winner].length);
+          detail.textContent = `공개 묶음: ${game.melds[game.winner].map(meld => meld.tiles.join('·')).join(' / ') || '없음'}\n손패 묶음: ${shape?.melds.map(meld => meld.join('·')).join(' / ') || '없음'}\n짝: ${shape?.pair.join('·') || '확인 불가'}\n이번 판 +${game.awardedPoints}점 (${game.pointBreakdown})`;
+        }
         const resultScore = document.getElementById('resultScore');
         resultScore.replaceChildren();
         match.wins.forEach((wins, player) => {
           const badge = document.createElement('span');
-          badge.textContent = `${player === 0 ? '나' : `상대${player}`} ${wins}승`;
+          badge.textContent = `${player === 0 ? '나' : `상대${player}`} ${wins}승 · ${match.points[player]}점`;
           resultScore.appendChild(badge);
         });
         document.getElementById('nextHand').textContent = match.hand === 4 ? '새 대국 시작' : '다음 판 시작';
@@ -473,11 +530,19 @@
         game.hands[0].push(game.pending.tile);
       }
       game.hands[player] = sortTiles(game.hands[player]);
+      const shape = winningShape(game.hands[player], game.melds[player].length);
+      const selfDraw = !method.includes('버림패');
+      const kongs = game.melds[player].filter(meld => meld.tiles.length === 4).length;
+      const concealed = shape?.melds.length || 0;
+      const points = 100 + (selfDraw ? 30 : 0) + concealed * 10 + kongs * 15 + game.flowers[player].length * 5;
+      game.awardedPoints = points;
+      game.pointBreakdown = `기본 100 + 직접 뽑기 ${selfDraw ? 30 : 0} + 손패 묶음 ${concealed * 10} + 깡 ${kongs * 15} + 꽃·계절 ${game.flowers[player].length * 5}`;
       game.winner = player;
       game.winMethod = method;
       game.phase = 'done';
       game.pending = null;
       match.wins[player]++;
+      match.points[player] += points;
       game.message = `${playerLabel(player)} 화료! ${method}\n네 묶음과 한 쌍 완성`;
       renderGame();
       requestAnimationFrame(() => host.scrollIntoView({ behavior: 'smooth', block: 'center' }));
@@ -645,12 +710,12 @@
       if (match.dealer !== 0) schedule(aiDiscard);
     }
     document.getElementById('deal').addEventListener('click', () => {
-      match = { hand: 1, dealer: 0, wins: [0, 0, 0, 0], draws: 0 };
+      match = { hand: 1, dealer: 0, wins: [0, 0, 0, 0], points: [0, 0, 0, 0], draws: 0 };
       deal();
     });
     document.getElementById('nextHand').addEventListener('click', () => {
       if (!game || game.phase !== 'done') return;
-      if (match.hand === 4) match = { hand: 1, dealer: 0, wins: [0, 0, 0, 0], draws: 0 };
+      if (match.hand === 4) match = { hand: 1, dealer: 0, wins: [0, 0, 0, 0], points: [0, 0, 0, 0], draws: 0 };
       else { match.hand++; match.dealer = (match.dealer + 1) % 4; }
       deal();
     });

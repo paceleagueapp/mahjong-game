@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canWin, chowOptions, handHints, isFlower } from './game.js';
+import { canWin, chowOptions, handHints, isFlower, shanten, waitingTiles, winningShape } from './game.js';
 import { dealSequence, wallOrder } from './wall.js';
 
 test('all break positions deal 53 distinct tiles in four-tile packets', () => {
@@ -39,4 +39,15 @@ test('chow offers only same-suit numeric sequences', () => {
 test('hand guidance distinguishes sets, pairs, near runs and isolated tiles', () => {
   assert.deepEqual(handHints(['1萬', '2萬', '3萬', '5筒', '5筒', '7索', '9索', '東', '東', '東', '白']),
     ['set', 'set', 'set', 'pair', 'pair', 'run', 'run', 'set', 'set', 'set', 'none']);
+});
+
+test('progress and waits include concealed pair with or without open melds', () => {
+  const ready = ['1萬', '2萬', '3萬', '4萬', '5萬', '6萬', '7萬', '8萬', '9萬', '1筒', '2筒', '3筒', '東'];
+  assert.equal(shanten(ready), 0);
+  assert.deepEqual(waitingTiles(ready), ['東']);
+  assert.equal(shanten([...ready, '東']), -1);
+  assert.deepEqual(winningShape([...ready, '東']).pair, ['東', '東']);
+  const openReady = ['1萬', '2萬', '3萬', '4萬', '5萬', '6萬', '東'];
+  assert.equal(shanten(openReady, 2), 0);
+  assert.deepEqual(waitingTiles(openReady, 2), ['東']);
 });
