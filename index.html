@@ -16,11 +16,15 @@
     .scene canvas { display: block; width: 100%; height: 100%; }
     .status { position: absolute; left: 12px; top: 12px; background: #000a; padding: 9px 11px; border-radius: 10px; font-size: 13px; line-height: 1.5; pointer-events: none; }
     .help { font-size: 13px; color: #bbb; margin-top: 8px; }
-    .hands { margin-top: 12px; background: #1c1c1c; border: 1px solid #333; border-radius: 14px; padding: 12px; }
+    .players { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .hands { min-width: 0; background: #1c1c1c; border: 1px solid #333; border-radius: 14px; padding: 12px; }
+    .player-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .tile-count { color: #aaa; font-size: 13px; }
     .hand { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
     .tile2d { width: 36px; height: 48px; border-radius: 5px; background: #f7f4e9; color: #222; border-bottom: 5px solid #73a94d; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; box-shadow: 0 2px 4px #0008; }
     .tile2d.red { color: #c43832; }
     .tile2d.green { color: #26734c; }
+    @media (max-width: 650px) { .players { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -30,14 +34,14 @@
       <div class="actions"><button id="deal">새 판 / 배패</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
     <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div></div>
-    <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 벽은 한 면에 18쌍 × 2층입니다.</div>
-    <section class="hands"><b>내 손패 (동)</b><div id="hand" class="hand"></div></section>
+    <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 벽은 한 면에 18쌍(2층)입니다.</div>
+    <div class="players" id="players" aria-live="polite"></div>
   </main>
   <script type="module">
     import { SIDE_NAMES, wallOrder, breakIndex, consumedIndices } from './wall.js';
     const host = document.getElementById('scene');
     const status = document.getElementById('status');
-    const handEl = document.getElementById('hand');
+    const playersEl = document.getElementById('players');
     let THREE, OrbitControls;
     try {
       THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm');
@@ -83,7 +87,9 @@
     const green = new THREE.MeshStandardMaterial({ color: 0x8dcc45, roughness: .48 });
     const wallGroup = new THREE.Group();
     scene.add(wallGroup);
-    const tileW = .48, tileH = .62, tileD = .78, gap = .015, wallHalf = 4.15;
+    const tileW = .48, tileH = .62, tileD = .78, gap = .015;
+    // Keep the inner edge of each perpendicular wall beyond the end of its neighbour.
+    const wallHalf = 9 * (tileW + gap) + tileD / 2 + .06;
     function makeTile(x, y, z, rotation) {
       const tile = new THREE.Group();
       const body = new THREE.Mesh(new THREE.BoxGeometry(tileW, tileH * .76, tileD), ivory);
@@ -121,14 +127,30 @@
       }
       return array;
     }
-    function renderHand(hand) {
-      handEl.replaceChildren();
-      for (const label of hand) {
-        const tile = document.createElement('div');
-        tile.className = 'tile2d' + (label === '中' ? ' red' : label === '發' ? ' green' : '');
-        tile.textContent = label;
-        handEl.appendChild(tile);
-      }
+    function renderHands(hands) {
+      playersEl.replaceChildren();
+      hands.forEach((hand, player) => {
+        const panel = document.createElement('section');
+        panel.className = 'hands';
+        const title = document.createElement('div');
+        title.className = 'player-title';
+        const name = document.createElement('b');
+        name.textContent = `${SIDE_NAMES[player]} 플레이어${player === 0 ? ' (나)' : ''}`;
+        const count = document.createElement('span');
+        count.className = 'tile-count';
+        count.textContent = `${hand.length}장`;
+        title.append(name, count);
+        const row = document.createElement('div');
+        row.className = 'hand';
+        for (const label of hand) {
+          const tile = document.createElement('div');
+          tile.className = 'tile2d' + (label === '中' ? ' red' : label === '發' ? ' green' : '');
+          tile.textContent = label;
+          row.appendChild(tile);
+        }
+        panel.append(title, row);
+        playersEl.appendChild(panel);
+      });
     }
     function deal() {
       for (const mesh of wallMeshes) mesh.visible = true;
@@ -142,7 +164,7 @@
         wallMeshes[index].visible = false;
         hands[turn % 4].push(shuffled[index]);
       });
-      renderHand(hands[0]);
+      renderHands(hands);
       const origin = positions[start];
       status.innerHTML = `<b>배패 완료</b><br>주사위 ${dice[0]} + ${dice[1]} = ${total}<br>${SIDE_NAMES[origin.side]}쪽 벽 ${origin.stack + 1}번째 쌍에서 개벽<br>동 14장 · 남/서/북 13장 · 벽 91장 남음`;
     }
@@ -168,7 +190,8 @@
     resize();
     function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); }
     loop();
-    status.innerHTML = '<b>3D 테이블 준비됨</b><br>18쌍 × 2층 × 4면<br>새 판 / 배패를 눌러보세요.';
+    renderHands([[], [], [], []]);
+    status.innerHTML = '<b>3D 테이블 준비됨</b><br>18쌍(2층) × 4면<br>새 판 / 배패를 눌러보세요.';
   </script>
 </body>
 </html>
