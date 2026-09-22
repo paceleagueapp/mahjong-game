@@ -27,9 +27,23 @@
     .tile2d.green { color: #26734c; }
     .tile2d.back { background: #83bb43; border: 2px solid #d5e6b3; border-bottom: 5px solid #477b2c; }
     button.tile2d { padding: 0; cursor: pointer; }
+    .tile2d.hint-set { box-shadow: inset 0 0 0 3px #ad87f5, 0 2px 4px #0008; }
+    .tile2d.hint-pair { box-shadow: inset 0 0 0 3px #43caa2, 0 2px 4px #0008; }
+    .tile2d.hint-run { box-shadow: inset 0 0 0 3px #e9b94d, 0 2px 4px #0008; }
+    .tile2d.drawn { position: relative; animation: drawnFlash 5s ease-out; }
+    .tile2d.drawn::after { content: '뽑음'; position: absolute; left: 50%; top: -18px; transform: translateX(-50%); padding: 1px 3px; border-radius: 4px; background: #14a8d0; color: white; font-size: 9px; white-space: nowrap; animation: drawnLabel 5s forwards; }
+    @keyframes drawnFlash { 0%, 65% { outline: 4px solid #20d9ff; box-shadow: 0 0 14px #20d9ff; transform: translateY(-6px); } 100% { outline: 0 solid transparent; box-shadow: 0 2px 4px #0008; transform: none; } }
+    @keyframes drawnLabel { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
     .tile2d.selected { outline: 3px solid #f5c84a; transform: translateY(-6px); }
+    .hand-legend { margin-top: 8px; display: flex; gap: 7px; flex-wrap: wrap; font-size: 11px; color: #ddd; }
+    .hand-legend span { padding: 2px 5px; border-radius: 5px; border: 2px solid; }
+    .hand-legend .set { border-color: #ad87f5; }
+    .hand-legend .pair { border-color: #43caa2; }
+    .hand-legend .run { border-color: #e9b94d; }
+    .selection-hint { min-height: 1.3em; margin-top: 6px; font-size: 12px; color: #f7d985; }
     .game-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
     .game-controls button:disabled { opacity: .45; cursor: default; }
+    .game-controls button.caution { background: #9b6227; }
     .claim-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .match-bar { margin-top: 9px; padding: 9px 11px; border-radius: 10px; background: #18372c; color: #e9f3eb; font-size: 13px; line-height: 1.5; }
     .result { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(90%, 430px); max-height: 85%; overflow: auto; padding: 18px; border: 2px solid #dfbe70; border-radius: 16px; background: #102b24f5; box-shadow: 0 12px 35px #000b; text-align: center; }
@@ -38,6 +52,17 @@
     .result p { margin: 8px 0; line-height: 1.5; }
     .result .score { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; color: #f3dc97; font-weight: 800; }
     .result .score span { padding: 4px 6px; border-radius: 6px; background: #23483a; }
+    .discard-viewer { position: absolute; z-index: 3; left: 50%; top: 48%; transform: translate(-50%, -50%); width: min(82%, 310px); border: 1px solid #d2b575; border-radius: 12px; background: #112b25ed; box-shadow: 0 6px 20px #0009; color: white; }
+    .discard-viewer[hidden] { display: none; }
+    .discard-viewer summary { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 9px; cursor: pointer; font-size: 12px; list-style: none; }
+    .discard-viewer summary::-webkit-details-marker { display: none; }
+    .discard-viewer summary::after { content: '▾'; color: #e6ce8f; }
+    .discard-viewer[open] summary::after { content: '▴'; }
+    .discard-viewer strong { display: inline-block; padding: 4px 7px; border-radius: 5px; background: #f8f4e8; color: #242424; font-size: 22px; }
+    .discard-history { max-height: 190px; overflow: auto; border-top: 1px solid #759382; padding: 6px 8px; text-align: left; }
+    .discard-history-row { margin: 4px 0; font-size: 11px; }
+    .discard-history-row b { display: inline-block; min-width: 42px; }
+    .discard-history .smalltile { font-size: 12px; padding: 3px 5px; }
     .melds, .discards, .flowers { margin-top: 9px; font-size: 12px; color: #bbb; line-height: 1.7; }
     .smalltile { display: inline-block; margin: 2px 2px 0 0; padding: 2px 4px; border-radius: 3px; background: #ece8d8; color: #222; font-weight: 800; }
     details.rules { margin-top: 12px; padding: 12px 14px; border: 1px solid #40584c; border-radius: 12px; background: #17251f; font-size: 14px; line-height: 1.6; }
@@ -52,8 +77,8 @@
       <div><b>3D 홍콩 마작</b><div style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
       <div class="actions"><button id="deal">새 게임</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
-    <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div><section id="result" class="result" hidden aria-live="assertive"><h2 id="resultTitle"></h2><p id="resultText"></p><p id="resultScore" class="score"></p><button id="nextHand">다음 판</button></section></div>
-    <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 벽은 한 면에 18쌍(2층)입니다. 상대 패는 뒷면만 표시합니다.</div>
+    <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div><details id="discardViewer" class="discard-viewer" hidden><summary><span id="latestDiscardPlayer"></span><strong id="latestDiscardTile"></strong><span id="latestDiscardState"></span></summary><div id="discardHistory" class="discard-history"></div></details><section id="result" class="result" hidden aria-live="assertive"><h2 id="resultTitle"></h2><p id="resultText"></p><p id="resultScore" class="score"></p><button id="nextHand">다음 판</button></section></div>
+    <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 가운데 최근 버림패를 누르면 전체 버림패가 보입니다. 상대 패는 뒷면만 표시합니다.</div>
     <div class="game-controls">
       <button id="drawTile" disabled>패 뽑기</button>
       <button id="discardTile" disabled>선택한 패 버리기</button>
@@ -68,6 +93,7 @@
       <ol>
         <li><b>새 게임</b>을 누르면 첫 판은 동(나) 14장으로 시작합니다. 동은 패를 하나 선택해 버립니다. 한 판이 끝나면 <b>다음 판</b>으로 이어지고 동 자리는 순서대로 바뀝니다.</li>
         <li>그다음부터는 자기 차례에 <b>패 뽑기</b>를 누르고, 손패 하나를 눌러 선택한 뒤 <b>선택한 패 버리기</b>를 누릅니다. 상대 차례는 자동으로 진행됩니다.</li>
+        <li><b>하늘색</b>은 방금 뽑은 패입니다. 손패의 <b>보라색</b>은 완성된 묶음, <b>초록색</b>은 같은 패 짝, <b>노란색</b>은 연속패 후보입니다. 색은 버릴 패를 고르는 참고 표시이며 화료를 보장하지 않습니다.</li>
         <li>목표는 <b>세 장짜리 묶음 네 개와 같은 패 두 장</b>입니다. 묶음은 같은 패 세 장(퐁) 또는 같은 종류의 연속 숫자 세 장(치)입니다. 네 장의 같은 패(깡)는 묶음 하나로 세고 보충패를 뽑습니다.</li>
         <li>상대가 버린 패로 완성하면 <b>화료</b>를 누를 수 있습니다. 퐁·깡은 누구의 버림패든, 치는 바로 앞 플레이어의 버림패만 가져올 수 있습니다. 가져온 묶음은 공개하고 패 한 장을 버립니다.</li>
         <li>꽃·계절패는 즉시 공개하고 벽 뒤쪽에서 보충패를 가져옵니다. 벽이 떨어지면 유국입니다.</li>
@@ -77,7 +103,7 @@
   </main>
   <script type="module">
     import { SIDE_NAMES, wallOrder, breakIndex, consumedIndices, dealSequence } from './wall.js?v=gameplay-1';
-    import { isFlower, sortTiles, canWin, chowOptions, chooseDiscard } from './game.js?v=gameplay-1';
+    import { isFlower, sortTiles, canWin, chowOptions, chooseDiscard, handHints } from './game.js?v=discard-ux-1';
     const host = document.getElementById('scene');
     const status = document.getElementById('status');
     const playersEl = document.getElementById('players');
@@ -202,8 +228,8 @@
       scene.add(group);
       return group;
     });
-    const discardGeometry = new THREE.BoxGeometry(.31, .1, .4);
-    const discardFaceGeometry = new THREE.PlaneGeometry(.27, .35);
+    const discardGeometry = new THREE.BoxGeometry(.41, .1, .51);
+    const discardFaceGeometry = new THREE.PlaneGeometry(.36, .45);
     const discardFaces = new Map();
     function discardMaterial(label) {
       if (discardFaces.has(label)) return discardFaces.get(label);
@@ -234,7 +260,7 @@
           face.rotation.x = -Math.PI / 2;
           face.position.y = .052;
           tile.add(face);
-          tile.position.set((index % 6 - 2.5) * .35, .05, (Math.floor(index / 6) - 1.5) * .44);
+          tile.position.set((index % 6 - 2.5) * .45, .05, (Math.floor(index / 6) - 1.5) * .55);
           group.add(tile);
         });
       });
@@ -255,14 +281,51 @@
     const winButton = document.getElementById('win');
     const kongButton = document.getElementById('kong');
     const claimActions = document.getElementById('claimActions');
-    let game = null, match = null, aiTimer = null;
+    let game = null, match = null, aiTimer = null, highlightTimer = null;
     const result = document.getElementById('result');
     const matchBar = document.getElementById('matchBar');
+    const discardViewer = document.getElementById('discardViewer');
     const playerLabel = player => `${SIDE_NAMES[(player - (match?.dealer || 0) + 4) % 4]}${player === 0 ? '(나)' : ''}`;
     const scoreText = () => match.wins.map((wins, player) => `${player === 0 ? '나' : `상대${player}`} ${wins}승`).join(' · ');
+    function renderDiscardViewer() {
+      discardViewer.hidden = !game?.lastDiscard;
+      if (discardViewer.hidden) return;
+      document.getElementById('latestDiscardPlayer').textContent = `${playerLabel(game.lastDiscard.player)} 버림`;
+      document.getElementById('latestDiscardTile').textContent = game.lastDiscard.tile;
+      document.getElementById('latestDiscardState').textContent = game.lastDiscard.claimed ? '가져감' : '';
+      const history = document.getElementById('discardHistory');
+      history.replaceChildren();
+      game.discards.forEach((pile, player) => {
+        const row = document.createElement('div');
+        row.className = 'discard-history-row';
+        const name = document.createElement('b');
+        name.textContent = playerLabel(player);
+        row.appendChild(name);
+        pile.forEach(label => {
+          const chip = document.createElement('span');
+          chip.className = 'smalltile';
+          chip.textContent = label;
+          row.appendChild(chip);
+        });
+        history.appendChild(row);
+      });
+    }
     function schedule(action) {
       clearTimeout(aiTimer);
       aiTimer = setTimeout(action, 650);
+    }
+    function showMyHand() {
+      requestAnimationFrame(() => playersEl.firstElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    }
+    function highlightDrawn(tile) {
+      clearTimeout(highlightTimer);
+      const activeGame = game;
+      game.drawnIndex = game.hands[0].lastIndexOf(tile);
+      highlightTimer = setTimeout(() => {
+        if (game !== activeGame) return;
+        game.drawnIndex = null;
+        renderGame();
+      }, 5000);
     }
     function remaining() { return game.back - game.front + 1; }
     function countTile(hand, tile) { return hand.filter(value => value === tile).length; }
@@ -282,13 +345,26 @@
         count.className = 'tile-count';
         count.textContent = `${hand.length}장`;
         title.append(name, count);
+        panel.appendChild(title);
+        if (player === 0 && hand.length) {
+          const legend = document.createElement('div');
+          legend.className = 'hand-legend';
+          for (const [kind, label] of [['set', '보라: 완성 묶음'], ['pair', '초록: 같은 패 짝'], ['run', '노랑: 연속 후보']]) {
+            const item = document.createElement('span');
+            item.className = kind;
+            item.textContent = label;
+            legend.appendChild(item);
+          }
+          panel.appendChild(legend);
+        }
         const row = document.createElement('div');
         row.className = 'hand';
+        const hints = player === 0 ? handHints(hand) : [];
         hand.forEach((label, index) => {
           const shown = player === 0 || game?.winner === player;
           const tile = document.createElement(player === 0 ? 'button' : 'div');
           if (player === 0) tile.type = 'button';
-          tile.className = 'tile2d' + (shown ? (label === '中' ? ' red' : label === '發' ? ' green' : '') : ' back') + (player === 0 && game?.selected === index ? ' selected' : '');
+          tile.className = 'tile2d' + (shown ? (label === '中' ? ' red' : label === '發' ? ' green' : '') : ' back') + (player === 0 ? ` hint-${hints[index]}` : '') + (player === 0 && game?.drawnIndex === index ? ' drawn' : '') + (player === 0 && game?.selected === index ? ' selected' : '');
           if (shown) tile.textContent = label;
           else tile.setAttribute('aria-label', '숨긴 패');
           if (player === 0) tile.addEventListener('click', () => {
@@ -296,9 +372,10 @@
             game.selected = index;
             renderGame();
           });
+          if (player === 0) tile.title = hints[index] === 'set' ? '완성된 묶음의 일부' : hints[index] === 'pair' ? '같은 패 짝' : hints[index] === 'run' ? '연속패 후보' : '현재 연결이 적은 패';
           row.appendChild(tile);
         });
-        panel.append(title, row);
+        panel.appendChild(row);
         if (game) {
           const flowers = document.createElement('div');
           flowers.className = 'flowers';
@@ -328,6 +405,7 @@
       renderHands(game?.hands || [[], [], [], []]);
       if (!game) return;
       renderDiscards(game.discards);
+      renderDiscardViewer();
       status.textContent = `${game.message}\n벽 ${remaining()}장 남음`;
       matchBar.textContent = `${match.hand}/4판 · 동: ${playerLabel(match.dealer)} · ${scoreText()}`;
       result.hidden = game.phase !== 'done';
@@ -349,6 +427,9 @@
       }
       drawButton.disabled = game.phase !== 'draw' || game.current !== 0;
       discardButton.disabled = game.phase !== 'discard' || game.current !== 0 || game.selected === null;
+      const selectedHint = game.selected === null ? 'none' : handHints(game.hands[0])[game.selected];
+      discardButton.textContent = selectedHint === 'set' ? '완성 묶음 패 버리기 ⚠' : selectedHint === 'pair' ? '짝 패 버리기 ⚠' : selectedHint === 'run' ? '연속 후보 버리기' : '선택한 패 버리기';
+      discardButton.classList.toggle('caution', selectedHint !== 'none');
       winButton.disabled = !(game.phase === 'discard' && game.current === 0 && canWin(game.hands[0], game.melds[0].length));
       const kong = game.phase === 'discard' && game.current === 0 && concealedKong(0);
       kongButton.disabled = !kong || remaining() === 0;
@@ -388,6 +469,7 @@
     function finishWin(player, method) {
       if (game.pending && player === 0) {
         game.discards[game.pending.discarder].pop();
+        if (game.lastDiscard) game.lastDiscard.claimed = true;
         game.hands[0].push(game.pending.tile);
       }
       game.hands[player] = sortTiles(game.hands[player]);
@@ -419,17 +501,25 @@
       for (const tile of needed) game.hands[player].splice(game.hands[player].indexOf(tile), 1);
     }
     function makeMeld(player, type, tile, needed, discarder) {
+      clearTimeout(highlightTimer);
       game.discards[discarder].pop();
+      if (game.lastDiscard) game.lastDiscard.claimed = true;
       removeTiles(player, needed);
       game.melds[player].push({ type, tiles: sortTiles([...needed, tile]) });
       game.pending = null;
       game.current = player;
       game.phase = 'discard';
       game.selected = null;
-      if (type === '깡' && !takeTile(player, true)) return finishDraw();
+      game.drawnIndex = null;
+      if (type === '깡') {
+        const replacement = takeTile(player, true);
+        if (!replacement) return finishDraw();
+        if (player === 0) highlightDrawn(replacement);
+      }
       if (canWin(game.hands[player], game.melds[player].length) && player !== 0) return finishWin(player, '보충패로 완성');
       game.message = `${playerLabel(player)} ${type}! ${player === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`;
       renderGame();
+      if (player === 0 && type === '깡') showMyHand();
       if (player !== 0) schedule(aiDiscard);
     }
     function humanClaim(type, needed) {
@@ -466,6 +556,7 @@
       const winner = aiWinner(discarder, tile);
       if (winner !== null) {
         game.discards[discarder].pop();
+        if (game.lastDiscard) game.lastDiscard.claimed = true;
         game.hands[winner].push(tile);
         return finishWin(winner, `${playerLabel(discarder)}의 버림패 ${tile}`);
       }
@@ -485,7 +576,7 @@
         if (options.win || options.pong || options.kong || options.chows.length) {
           game.pending = { discarder, tile, options };
           game.phase = 'claim';
-          game.message = `${playerLabel(discarder)}가 ${tile} 버림 · 가져오거나 넘기세요`;
+          game.message = `${playerLabel(discarder)} 플레이어가 ${tile} 버림 · 가져오거나 넘기세요`;
           return renderGame();
         }
       }
@@ -497,7 +588,8 @@
       const index = chooseDiscard(game.hands[player]);
       const [tile] = game.hands[player].splice(index, 1);
       game.discards[player].push(tile);
-      game.message = `${playerLabel(player)}가 ${tile} 버림`;
+      game.lastDiscard = { player, tile, claimed: false };
+      game.message = `${playerLabel(player)} 플레이어가 ${tile} 버림`;
       game.phase = 'waiting';
       renderGame();
       schedule(() => resolveDiscard(player, tile));
@@ -522,6 +614,7 @@
     }
     function deal() {
       clearTimeout(aiTimer);
+      clearTimeout(highlightTimer);
       for (const mesh of wallMeshes) mesh.visible = true;
       const shuffled = shuffle([...tiles]);
       const dice = [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
@@ -530,8 +623,9 @@
       game = {
         shuffled, order: consumedIndices(start, 144), front: 53, back: 143,
         hands: [[], [], [], []], melds: [[], [], [], []], flowers: [[], [], [], []], discards: [[], [], [], []],
-        current: match.dealer, phase: 'discard', selected: null, pending: null, winner: null, message: ''
+        current: match.dealer, phase: 'discard', selected: null, drawnIndex: null, lastDiscard: null, pending: null, winner: null, message: ''
       };
+      discardViewer.open = false;
       dealSequence(start).forEach(({ index, player }) => {
         wallMeshes[index].visible = false;
         game.hands[(match.dealer + player) % 4].push(shuffled[index]);
@@ -564,18 +658,24 @@
       if (!game || game.phase !== 'draw' || game.current !== 0) return;
       const tile = takeTile(0);
       if (!tile) return finishDraw();
+      highlightDrawn(tile);
       game.phase = 'discard';
       game.message = `${tile} 뽑음 · 패를 선택해 버리세요`;
       renderGame();
+      showMyHand();
     });
     discardButton.addEventListener('click', () => {
       if (!game || game.phase !== 'discard' || game.current !== 0 || game.selected === null) return;
       const [tile] = game.hands[0].splice(game.selected, 1);
       game.discards[0].push(tile);
+      game.lastDiscard = { player: 0, tile, claimed: false };
       game.selected = null;
+      clearTimeout(highlightTimer);
+      game.drawnIndex = null;
       game.phase = 'waiting';
-      game.message = `${playerLabel(0)}가 ${tile} 버림 · 상대 차례 진행 중…`;
+      game.message = `${playerLabel(0)} 플레이어가 ${tile} 버림 · 상대 차례 진행 중…`;
       renderGame();
+      requestAnimationFrame(() => host.scrollIntoView({ behavior: 'smooth', block: 'center' }));
       schedule(() => resolveDiscard(0, tile));
     });
     winButton.addEventListener('click', () => {
@@ -587,10 +687,13 @@
       if (!tile) return;
       removeTiles(0, [tile, tile, tile, tile]);
       game.melds[0].push({ type: '암깡', tiles: [tile, tile, tile, tile] });
-      if (!takeTile(0, true)) return finishDraw();
+      const replacement = takeTile(0, true);
+      if (!replacement) return finishDraw();
       game.selected = null;
+      highlightDrawn(replacement);
       game.message = `${tile} 암깡 · 보충패를 가져왔습니다`;
       renderGame();
+      showMyHand();
     });
     document.getElementById('resetCam').addEventListener('click', () => {
       camera.position.set(8.8, 8.1, 10.5);

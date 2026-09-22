@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canWin, chowOptions, isFlower } from './game.js';
+import { canWin, chowOptions, handHints, isFlower } from './game.js';
 import { dealSequence, wallOrder } from './wall.js';
 
 test('all break positions deal 53 distinct tiles in four-tile packets', () => {
@@ -34,4 +34,9 @@ test('chow offers only same-suit numeric sequences', () => {
   assert.deepEqual(chowOptions(['2萬', '3萬', '5萬', '6萬'], '4萬'), [['2萬', '3萬'], ['3萬', '5萬'], ['5萬', '6萬']]);
   assert.deepEqual(chowOptions(['東', '西'], '南'), []);
   assert.deepEqual(chowOptions(['8索', '9索'], '1索'), []);
+});
+
+test('hand guidance distinguishes sets, pairs, near runs and isolated tiles', () => {
+  assert.deepEqual(handHints(['1萬', '2萬', '3萬', '5筒', '5筒', '7索', '9索', '東', '東', '東', '白']),
+    ['set', 'set', 'set', 'pair', 'pair', 'run', 'run', 'set', 'set', 'set', 'none']);
 });

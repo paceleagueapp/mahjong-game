@@ -63,6 +63,24 @@ export function chowOptions(hand, tile) {
   return options;
 }
 
+// Visual guidance only: a tile can be useful in more than one possible hand.
+export function handHints(hand) {
+  const counts = new Map();
+  for (const tile of hand) counts.set(tile, (counts.get(tile) || 0) + 1);
+  return hand.map(tile => {
+    const suit = tile.slice(-1), number = Number(tile.slice(0, -1));
+    const suited = SUITS.includes(suit);
+    const inSequence = suited && [-2, -1, 0].some(offset => {
+      const start = number + offset;
+      return start >= 1 && start <= 7 && [start, start + 1, start + 2].every(n => counts.has(`${n}${suit}`));
+    });
+    if ((counts.get(tile) || 0) >= 3 || inSequence) return 'set';
+    if ((counts.get(tile) || 0) >= 2) return 'pair';
+    if (suited && hand.some(other => other !== tile && other.slice(-1) === suit && Math.abs(Number(other.slice(0, -1)) - number) <= 2)) return 'run';
+    return 'none';
+  });
+}
+
 export function chooseDiscard(hand) {
   let worst = Infinity, chosen = 0;
   hand.forEach((tile, index) => {
