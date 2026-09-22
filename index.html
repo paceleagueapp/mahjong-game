@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3D 홍콩 마작 프로토타입</title>
+  <title>3D 홍콩 마작 입문 대국</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif; }
@@ -31,6 +31,13 @@
     .game-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
     .game-controls button:disabled { opacity: .45; cursor: default; }
     .claim-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .match-bar { margin-top: 9px; padding: 9px 11px; border-radius: 10px; background: #18372c; color: #e9f3eb; font-size: 13px; line-height: 1.5; }
+    .result { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(90%, 430px); max-height: 85%; overflow: auto; padding: 18px; border: 2px solid #dfbe70; border-radius: 16px; background: #102b24f5; box-shadow: 0 12px 35px #000b; text-align: center; }
+    .result[hidden] { display: none; }
+    .result h2 { margin: 0 0 8px; font-size: 23px; }
+    .result p { margin: 8px 0; line-height: 1.5; }
+    .result .score { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; color: #f3dc97; font-weight: 800; }
+    .result .score span { padding: 4px 6px; border-radius: 6px; background: #23483a; }
     .melds, .discards, .flowers { margin-top: 9px; font-size: 12px; color: #bbb; line-height: 1.7; }
     .smalltile { display: inline-block; margin: 2px 2px 0 0; padding: 2px 4px; border-radius: 3px; background: #ece8d8; color: #222; font-weight: 800; }
     details.rules { margin-top: 12px; padding: 12px 14px; border: 1px solid #40584c; border-radius: 12px; background: #17251f; font-size: 14px; line-height: 1.6; }
@@ -42,10 +49,10 @@
 <body>
   <main class="app">
     <div class="bar">
-      <div><b>Three.js 3D 홍콩 마작</b><div style="font-size:13px;color:#aaa">3D 게임 구조 프로토타입</div></div>
+      <div><b>3D 홍콩 마작</b><div style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
       <div class="actions"><button id="deal">새 게임</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
-    <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div></div>
+    <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div><section id="result" class="result" hidden aria-live="assertive"><h2 id="resultTitle"></h2><p id="resultText"></p><p id="resultScore" class="score"></p><button id="nextHand">다음 판</button></section></div>
     <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 벽은 한 면에 18쌍(2층)입니다. 상대 패는 뒷면만 표시합니다.</div>
     <div class="game-controls">
       <button id="drawTile" disabled>패 뽑기</button>
@@ -54,17 +61,18 @@
       <button id="kong" disabled>암깡</button>
       <div id="claimActions" class="claim-actions" aria-live="polite"></div>
     </div>
+    <div id="matchBar" class="match-bar">새 게임을 눌러 4판 대국을 시작하세요.</div>
     <div class="players" id="players" aria-live="polite"></div>
     <details class="rules" open>
       <summary>처음 하는 사람을 위한 규칙과 조작</summary>
       <ol>
-        <li><b>새 게임</b>을 누르면 동(나) 14장, 남·서·북 13장으로 시작합니다. 동은 패를 하나 선택해 버립니다.</li>
+        <li><b>새 게임</b>을 누르면 첫 판은 동(나) 14장으로 시작합니다. 동은 패를 하나 선택해 버립니다. 한 판이 끝나면 <b>다음 판</b>으로 이어지고 동 자리는 순서대로 바뀝니다.</li>
         <li>그다음부터는 자기 차례에 <b>패 뽑기</b>를 누르고, 손패 하나를 눌러 선택한 뒤 <b>선택한 패 버리기</b>를 누릅니다. 상대 차례는 자동으로 진행됩니다.</li>
         <li>목표는 <b>세 장짜리 묶음 네 개와 같은 패 두 장</b>입니다. 묶음은 같은 패 세 장(퐁) 또는 같은 종류의 연속 숫자 세 장(치)입니다. 네 장의 같은 패(깡)는 묶음 하나로 세고 보충패를 뽑습니다.</li>
         <li>상대가 버린 패로 완성하면 <b>화료</b>를 누를 수 있습니다. 퐁·깡은 누구의 버림패든, 치는 바로 앞 플레이어의 버림패만 가져올 수 있습니다. 가져온 묶음은 공개하고 패 한 장을 버립니다.</li>
         <li>꽃·계절패는 즉시 공개하고 벽 뒤쪽에서 보충패를 가져옵니다. 벽이 떨어지면 유국입니다.</li>
       </ol>
-      <p>처음 배우는 용도로 한 판만 진행합니다. 점수·최소 번수·특수 화료형은 적용하지 않습니다. <a href="https://c.tabletopia.com/games/old-hong-kong-mahjong/rules/mahjong-rules/en" target="_blank" rel="noopener">홍콩식 마작 규칙 참고</a></p>
+      <p>처음 배우는 용도로 승리 여부와 관계없이 동 자리를 한 번씩 맡는 4판을 진행하며 승리한 판 수를 셉니다. 점수·최소 번수·특수 화료형은 적용하지 않습니다. <a href="https://c.tabletopia.com/games/old-hong-kong-mahjong/rules/mahjong-rules/en" target="_blank" rel="noopener">홍콩식 마작 규칙 참고</a></p>
     </details>
   </main>
   <script type="module">
@@ -247,7 +255,11 @@
     const winButton = document.getElementById('win');
     const kongButton = document.getElementById('kong');
     const claimActions = document.getElementById('claimActions');
-    let game = null, aiTimer = null;
+    let game = null, match = null, aiTimer = null;
+    const result = document.getElementById('result');
+    const matchBar = document.getElementById('matchBar');
+    const playerLabel = player => `${SIDE_NAMES[(player - (match?.dealer || 0) + 4) % 4]}${player === 0 ? '(나)' : ''}`;
+    const scoreText = () => match.wins.map((wins, player) => `${player === 0 ? '나' : `상대${player}`} ${wins}승`).join(' · ');
     function schedule(action) {
       clearTimeout(aiTimer);
       aiTimer = setTimeout(action, 650);
@@ -259,13 +271,13 @@
       renderTableHands(hands);
       playersEl.replaceChildren();
       hands.forEach((hand, player) => {
-        seatBadges[player].textContent = `${SIDE_NAMES[player]} ${player === 0 ? '(나) ' : ''}${hand.length}장`;
+        seatBadges[player].textContent = `${playerLabel(player)} ${hand.length}장`;
         const panel = document.createElement('section');
         panel.className = 'hands';
         const title = document.createElement('div');
         title.className = 'player-title';
         const name = document.createElement('b');
-        name.textContent = `${SIDE_NAMES[player]} 플레이어${player === 0 ? ' (나)' : ''}`;
+        name.textContent = `${playerLabel(player)} 플레이어`;
         const count = document.createElement('span');
         count.className = 'tile-count';
         count.textContent = `${hand.length}장`;
@@ -317,6 +329,24 @@
       if (!game) return;
       renderDiscards(game.discards);
       status.textContent = `${game.message}\n벽 ${remaining()}장 남음`;
+      matchBar.textContent = `${match.hand}/4판 · 동: ${playerLabel(match.dealer)} · ${scoreText()}`;
+      result.hidden = game.phase !== 'done';
+      if (game.phase === 'done') {
+        document.getElementById('resultTitle').textContent = match.hand === 4 ? '4판 대국 종료' : (game.winner === null ? '유국' : `${playerLabel(game.winner)} 화료!`);
+        const handResult = game.winner === null ? '벽의 패를 모두 사용했습니다.' : `${playerLabel(game.winner)} 플레이어가 ${game.winMethod}로 이겼습니다. 승자의 패는 아래에 공개됩니다.`;
+        const leaders = match.wins.map((wins, player) => ({ wins, player })).filter(entry => entry.wins === Math.max(...match.wins));
+        document.getElementById('resultText').textContent = match.hand === 4
+          ? `${handResult} 최종 최다승: ${leaders.map(entry => entry.player === 0 ? '나' : `상대${entry.player}`).join(', ')}.`
+          : handResult;
+        const resultScore = document.getElementById('resultScore');
+        resultScore.replaceChildren();
+        match.wins.forEach((wins, player) => {
+          const badge = document.createElement('span');
+          badge.textContent = `${player === 0 ? '나' : `상대${player}`} ${wins}승`;
+          resultScore.appendChild(badge);
+        });
+        document.getElementById('nextHand').textContent = match.hand === 4 ? '새 대국 시작' : '다음 판 시작';
+      }
       drawButton.disabled = game.phase !== 'draw' || game.current !== 0;
       discardButton.disabled = game.phase !== 'discard' || game.current !== 0 || game.selected === null;
       winButton.disabled = !(game.phase === 'discard' && game.current === 0 && canWin(game.hands[0], game.melds[0].length));
@@ -333,7 +363,7 @@
         claimActions.appendChild(button);
       };
       const { tile, options } = game.pending;
-      if (options.win) offer(`화료 ${tile}`, () => finishWin(0, `${SIDE_NAMES[game.pending.discarder]}의 버림패 ${tile}`));
+      if (options.win) offer(`화료 ${tile}`, () => finishWin(0, `${playerLabel(game.pending.discarder)}의 버림패 ${tile}`));
       if (options.kong) offer(`깡 ${tile}`, () => humanClaim('깡', [tile, tile, tile]));
       if (options.pong) offer(`퐁 ${tile}`, () => humanClaim('퐁', [tile, tile]));
       options.chows.forEach(needed => offer(`치 ${[...needed, tile].join(' ')}`, () => humanClaim('치', needed)));
@@ -362,21 +392,26 @@
       }
       game.hands[player] = sortTiles(game.hands[player]);
       game.winner = player;
+      game.winMethod = method;
       game.phase = 'done';
       game.pending = null;
-      game.message = `${SIDE_NAMES[player]} 화료! ${method}\n네 묶음과 한 쌍 완성`;
+      match.wins[player]++;
+      game.message = `${playerLabel(player)} 화료! ${method}\n네 묶음과 한 쌍 완성`;
       renderGame();
+      requestAnimationFrame(() => host.scrollIntoView({ behavior: 'smooth', block: 'center' }));
     }
     function finishDraw() {
       game.phase = 'done';
-      game.message = '유국 · 벽의 패를 모두 사용했습니다. 새 게임을 눌러 다시 시작하세요.';
+      match.draws++;
+      game.message = '유국 · 벽의 패를 모두 사용했습니다. 다음 판으로 이어가세요.';
       renderGame();
+      requestAnimationFrame(() => host.scrollIntoView({ behavior: 'smooth', block: 'center' }));
     }
     function startNext(discarder) {
       if (remaining() === 0) return finishDraw();
       game.current = (discarder + 1) % 4;
       game.phase = 'draw';
-      game.message = `${SIDE_NAMES[game.current]} 차례 · ${game.current === 0 ? '패 뽑기를 누르세요' : '패를 뽑는 중…'}`;
+      game.message = `${playerLabel(game.current)} 차례 · ${game.current === 0 ? '패 뽑기를 누르세요' : '패를 뽑는 중…'}`;
       renderGame();
       if (game.current !== 0) schedule(aiTurn);
     }
@@ -393,7 +428,7 @@
       game.selected = null;
       if (type === '깡' && !takeTile(player, true)) return finishDraw();
       if (canWin(game.hands[player], game.melds[player].length) && player !== 0) return finishWin(player, '보충패로 완성');
-      game.message = `${SIDE_NAMES[player]} ${type}! ${player === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`;
+      game.message = `${playerLabel(player)} ${type}! ${player === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`;
       renderGame();
       if (player !== 0) schedule(aiDiscard);
     }
@@ -432,7 +467,7 @@
       if (winner !== null) {
         game.discards[discarder].pop();
         game.hands[winner].push(tile);
-        return finishWin(winner, `${SIDE_NAMES[discarder]}의 버림패 ${tile}`);
+        return finishWin(winner, `${playerLabel(discarder)}의 버림패 ${tile}`);
       }
       aiClaims(discarder, tile);
     }
@@ -450,7 +485,7 @@
         if (options.win || options.pong || options.kong || options.chows.length) {
           game.pending = { discarder, tile, options };
           game.phase = 'claim';
-          game.message = `${SIDE_NAMES[discarder]}가 ${tile} 버림 · 가져오거나 넘기세요`;
+          game.message = `${playerLabel(discarder)}가 ${tile} 버림 · 가져오거나 넘기세요`;
           return renderGame();
         }
       }
@@ -462,7 +497,7 @@
       const index = chooseDiscard(game.hands[player]);
       const [tile] = game.hands[player].splice(index, 1);
       game.discards[player].push(tile);
-      game.message = `${SIDE_NAMES[player]}가 ${tile} 버림`;
+      game.message = `${playerLabel(player)}가 ${tile} 버림`;
       game.phase = 'waiting';
       renderGame();
       schedule(() => resolveDiscard(player, tile));
@@ -481,7 +516,7 @@
         if (canWin(game.hands[player], game.melds[player].length)) return finishWin(player, '암깡 보충패로 완성');
       }
       game.phase = 'discard';
-      game.message = `${SIDE_NAMES[player]}가 패를 뽑았습니다`;
+      game.message = `${playerLabel(player)}가 패를 뽑았습니다`;
       renderGame();
       schedule(aiDiscard);
     }
@@ -495,11 +530,11 @@
       game = {
         shuffled, order: consumedIndices(start, 144), front: 53, back: 143,
         hands: [[], [], [], []], melds: [[], [], [], []], flowers: [[], [], [], []], discards: [[], [], [], []],
-        current: 0, phase: 'discard', selected: null, pending: null, winner: null, message: ''
+        current: match.dealer, phase: 'discard', selected: null, pending: null, winner: null, message: ''
       };
       dealSequence(start).forEach(({ index, player }) => {
         wallMeshes[index].visible = false;
-        game.hands[player].push(shuffled[index]);
+        game.hands[(match.dealer + player) % 4].push(shuffled[index]);
       });
       for (let player = 0; player < 4; player++) {
         for (let i = game.hands[player].length - 1; i >= 0; i--) {
@@ -510,10 +545,20 @@
         game.hands[player] = sortTiles(game.hands[player]);
       }
       const origin = positions[start];
-      game.message = `배패 완료 · 주사위 ${dice[0]}+${dice[1]}=${total}\n${SIDE_NAMES[origin.side]}쪽 벽 ${origin.stack + 1}번째 쌍에서 개벽\n동 차례 · 패를 선택해 버리세요`;
+      game.message = `${match.hand}/4판 배패 · 주사위 ${dice[0]}+${dice[1]}=${total}\n${playerLabel(origin.side)}쪽 벽 ${origin.stack + 1}번째 쌍에서 개벽\n${playerLabel(match.dealer)} 차례 · ${match.dealer === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`;
       renderGame();
+      if (match.dealer !== 0) schedule(aiDiscard);
     }
-    document.getElementById('deal').addEventListener('click', deal);
+    document.getElementById('deal').addEventListener('click', () => {
+      match = { hand: 1, dealer: 0, wins: [0, 0, 0, 0], draws: 0 };
+      deal();
+    });
+    document.getElementById('nextHand').addEventListener('click', () => {
+      if (!game || game.phase !== 'done') return;
+      if (match.hand === 4) match = { hand: 1, dealer: 0, wins: [0, 0, 0, 0], draws: 0 };
+      else { match.hand++; match.dealer = (match.dealer + 1) % 4; }
+      deal();
+    });
     drawButton.addEventListener('click', () => {
       if (!game || game.phase !== 'draw' || game.current !== 0) return;
       const tile = takeTile(0);
@@ -528,7 +573,7 @@
       game.discards[0].push(tile);
       game.selected = null;
       game.phase = 'waiting';
-      game.message = `동이 ${tile} 버림 · 상대 차례 진행 중…`;
+      game.message = `${playerLabel(0)}가 ${tile} 버림 · 상대 차례 진행 중…`;
       renderGame();
       schedule(() => resolveDiscard(0, tile));
     });
