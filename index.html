@@ -537,9 +537,10 @@
         game.hands[(match.dealer + player) % 4].push(shuffled[index]);
       });
       for (let player = 0; player < 4; player++) {
-        for (let i = game.hands[player].length - 1; i >= 0; i--) {
-          if (!isFlower(game.hands[player][i])) continue;
-          game.flowers[player].push(game.hands[player].splice(i, 1)[0]);
+        const flowers = game.hands[player].filter(isFlower);
+        game.flowers[player].push(...flowers);
+        game.hands[player] = game.hands[player].filter(tile => !isFlower(tile));
+        for (let i = 0; i < flowers.length; i++) {
           if (!takeTile(player, true)) return finishDraw();
         }
         game.hands[player] = sortTiles(game.hands[player]);
