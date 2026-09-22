@@ -15,6 +15,7 @@
     .scene { height: min(72vw, 650px); min-height: 380px; border-radius: 18px; overflow: hidden; background: #0d3d30; border: 1px solid #444; position: relative; }
     .scene canvas { display: block; width: 100%; height: 100%; }
     .status { position: absolute; left: 12px; top: 12px; background: #000a; padding: 9px 11px; border-radius: 10px; font-size: 13px; line-height: 1.5; pointer-events: none; }
+    .seat-badge { position: absolute; z-index: 2; transform: translate(-50%, -50%); border: 1px solid #d4b474; border-radius: 8px; background: #102e26e8; color: #fff; padding: 5px 8px; white-space: nowrap; font-size: 12px; font-weight: 800; box-shadow: 0 2px 5px #0008; pointer-events: none; }
     .help { font-size: 13px; color: #bbb; margin-top: 8px; }
     .players { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
     .hands { min-width: 0; background: #1c1c1c; border: 1px solid #333; border-radius: 14px; padding: 12px; }
@@ -38,7 +39,7 @@
     <div class="players" id="players" aria-live="polite"></div>
   </main>
   <script type="module">
-    import { SIDE_NAMES, wallOrder, breakIndex, consumedIndices } from './wall.js';
+    import { SIDE_NAMES, wallOrder, breakIndex, dealSequence } from './wall.js';
     const host = document.getElementById('scene');
     const status = document.getElementById('status');
     const playersEl = document.getElementById('players');
@@ -116,6 +117,75 @@
         default: return makeTile(p, y, -wallHalf, 0);
       }
     });
+    function labelTexture(label, color = '#202020', background = '#f7f4e9') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = color;
+      ctx.font = 'bold 72px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, 64, 82);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+    const playerGroups = SIDE_NAMES.map((name, side) => {
+      const group = new THREE.Group();
+      const seat = [[3.25, 0, 0], [0, 0, 3.25], [-3.25, 0, 0], [0, 0, -3.25]][side];
+      group.position.set(...seat);
+      group.rotation.y = [-Math.PI / 2, 0, Math.PI / 2, Math.PI][side];
+      const nameplate = new THREE.Mesh(
+        new THREE.PlaneGeometry(.9, .48),
+        new THREE.MeshBasicMaterial({ map: labelTexture(name, '#ffffff', '#164b3c'), side: THREE.DoubleSide })
+      );
+      nameplate.rotation.x = -Math.PI / 2;
+      nameplate.position.set(0, .012, .57);
+      group.add(nameplate);
+      scene.add(group);
+      return group;
+    });
+    const seatBadges = SIDE_NAMES.map((name, side) => {
+      const badge = document.createElement('div');
+      badge.className = 'seat-badge';
+      badge.textContent = `${name} ${side === 0 ? '(나) ' : ''}0장`;
+      host.appendChild(badge);
+      return badge;
+    });
+    function positionSeatBadges() {
+      playerGroups.forEach((group, side) => {
+        const point = group.localToWorld(new THREE.Vector3(0, .25, .85)).project(camera);
+        seatBadges[side].style.left = `${(point.x + 1) * host.clientWidth / 2}px`;
+        seatBadges[side].style.top = `${(1 - point.y) * host.clientHeight / 2}px`;
+      });
+    }
+    const faceCache = new Map();
+    function renderTableHands(hands) {
+      playerGroups.forEach((group, side) => {
+        while (group.children.length > 1) group.remove(group.children[group.children.length - 1]);
+        hands[side].forEach((label, index) => {
+          const tile = new THREE.Group();
+          const body = new THREE.Mesh(new THREE.BoxGeometry(.36, .14, .46), ivory);
+          body.castShadow = body.receiveShadow = true;
+          tile.add(body);
+          const color = label === '中' ? '#c43832' : label === '發' ? '#26734c' : '#202020';
+          const key = `${label}:${color}`;
+          if (!faceCache.has(key)) faceCache.set(key, labelTexture(label, color));
+          const face = new THREE.Mesh(
+            new THREE.PlaneGeometry(.31, .39),
+            new THREE.MeshBasicMaterial({ map: faceCache.get(key), side: THREE.DoubleSide })
+          );
+          face.rotation.x = -Math.PI / 2;
+          face.position.y = .072;
+          tile.add(face);
+          tile.position.set((index - (hands[side].length - 1) / 2) * .4, .09, -.06);
+          group.add(tile);
+        });
+      });
+    }
     const tiles = [];
     for (const suit of ['萬', '筒', '索']) for (let n = 1; n <= 9; n++) for (let copy = 0; copy < 4; copy++) tiles.push(n + suit);
     for (const honor of ['東', '南', '西', '北', '中', '發', '白']) for (let copy = 0; copy < 4; copy++) tiles.push(honor);
@@ -128,8 +198,10 @@
       return array;
     }
     function renderHands(hands) {
+      renderTableHands(hands);
       playersEl.replaceChildren();
       hands.forEach((hand, player) => {
+        seatBadges[player].textContent = `${SIDE_NAMES[player]} ${player === 0 ? '(나) ' : ''}${hand.length}장`;
         const panel = document.createElement('section');
         panel.className = 'hands';
         const title = document.createElement('div');
@@ -158,11 +230,11 @@
       const dice = [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
       const total = dice[0] + dice[1];
       const start = breakIndex(total);
-      const dealt = consumedIndices(start, 53);
+      const dealt = dealSequence(start);
       const hands = [[], [], [], []];
-      dealt.forEach((index, turn) => {
+      dealt.forEach(({ index, player }) => {
         wallMeshes[index].visible = false;
-        hands[turn % 4].push(shuffled[index]);
+        hands[player].push(shuffled[index]);
       });
       renderHands(hands);
       const origin = positions[start];
@@ -188,7 +260,7 @@
     }
     new ResizeObserver(resize).observe(host);
     resize();
-    function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); }
+    function loop() { controls.update(); positionSeatBadges(); renderer.render(scene, camera); requestAnimationFrame(loop); }
     loop();
     renderHands([[], [], [], []]);
     status.innerHTML = '<b>3D 테이블 준비됨</b><br>18쌍(2층) × 4면<br>새 판 / 배패를 눌러보세요.';
