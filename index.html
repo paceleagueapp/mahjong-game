@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D 홍콩 마작 프로토타입</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif; }
+    .app { max-width: 1100px; margin: auto; padding: 12px; }
+    .bar, .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .bar { justify-content: space-between; margin-bottom: 10px; }
+    button { border: 0; border-radius: 10px; padding: 11px 14px; font-weight: 800; background: #1d765d; color: white; cursor: pointer; }
+    button.alt { background: #333; }
+    .scene { height: min(72vw, 650px); min-height: 380px; border-radius: 18px; overflow: hidden; background: #0d3d30; border: 1px solid #444; position: relative; }
+    .scene canvas { display: block; width: 100%; height: 100%; }
+    .status { position: absolute; left: 12px; top: 12px; background: #000a; padding: 9px 11px; border-radius: 10px; font-size: 13px; line-height: 1.5; pointer-events: none; }
+    .help { font-size: 13px; color: #bbb; margin-top: 8px; }
+    .hands { margin-top: 12px; background: #1c1c1c; border: 1px solid #333; border-radius: 14px; padding: 12px; }
+    .hand { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+    .tile2d { width: 36px; height: 48px; border-radius: 5px; background: #f7f4e9; color: #222; border-bottom: 5px solid #73a94d; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; box-shadow: 0 2px 4px #0008; }
+    .tile2d.red { color: #c43832; }
+    .tile2d.green { color: #26734c; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="bar">
+      <div><b>Three.js 3D 홍콩 마작</b><div style="font-size:13px;color:#aaa">3D 게임 구조 프로토타입</div></div>
+      <div class="actions"><button id="deal">새 판 / 배패</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
+    </div>
+    <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div></div>
+    <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 벽은 한 면에 18쌍 × 2층입니다.</div>
+    <section class="hands"><b>내 손패 (동)</b><div id="hand" class="hand"></div></section>
+  </main>
+  <script type="module">
+    import { SIDE_NAMES, wallOrder, breakIndex, consumedIndices } from './wall.js';
+    const host = document.getElementById('scene');
+    const status = document.getElementById('status');
+    const handEl = document.getElementById('hand');
+    let THREE, OrbitControls;
+    try {
+      THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm');
+      ({ OrbitControls } = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js/+esm'));
+    } catch (error) {
+      status.textContent = 'Three.js를 불러오지 못했습니다. 인터넷 연결 후 다시 열어주세요.';
+      throw error;
+    }
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x202020);
+    const camera = new THREE.PerspectiveCamera(42, 1, .1, 100);
+    camera.position.set(8.8, 8.1, 10.5);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    host.appendChild(renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, .4, 0);
+    controls.minDistance = 8;
+    controls.maxDistance = 22;
+    controls.maxPolarAngle = Math.PI * .48;
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x173a2d, 2.3));
+    const key = new THREE.DirectionalLight(0xffffff, 3.2);
+    key.position.set(4, 9, 5);
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048, 2048);
+    scene.add(key);
+    const table = new THREE.Mesh(new THREE.BoxGeometry(12, .55, 12), new THREE.MeshStandardMaterial({ color: 0x116047, roughness: .92 }));
+    table.position.y = -.38;
+    table.receiveShadow = true;
+    scene.add(table);
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x5b321f, roughness: .65 });
+    for (const [x, z, sx, sz] of [[0,-6.05,12.8,.45],[0,6.05,12.8,.45],[-6.05,0,.45,12.8],[6.05,0,.45,12.8]]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(sx, .75, sz), railMat);
+      rail.position.set(x, 0, z);
+      rail.castShadow = rail.receiveShadow = true;
+      scene.add(rail);
+    }
+    const ivory = new THREE.MeshStandardMaterial({ color: 0xf3f0df, roughness: .42 });
+    const green = new THREE.MeshStandardMaterial({ color: 0x8dcc45, roughness: .48 });
+    const wallGroup = new THREE.Group();
+    scene.add(wallGroup);
+    const tileW = .48, tileH = .62, tileD = .78, gap = .015, wallHalf = 4.15;
+    function makeTile(x, y, z, rotation) {
+      const tile = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(tileW, tileH * .76, tileD), ivory);
+      body.position.y = -tileH * .12;
+      body.castShadow = body.receiveShadow = true;
+      tile.add(body);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(tileW + .012, tileH * .24, tileD + .012), green);
+      back.position.y = tileH * .38;
+      back.castShadow = true;
+      tile.add(back);
+      tile.position.set(x, y, z);
+      tile.rotation.y = rotation;
+      wallGroup.add(tile);
+      return tile;
+    }
+    const positions = wallOrder();
+    const wallMeshes = positions.map(({ side, stack, level }) => {
+      const p = (stack - 8.5) * (tileW + gap);
+      const y = .38 + level * tileH;
+      switch (side) {
+        case 0: return makeTile(wallHalf, y, p, Math.PI / 2);
+        case 1: return makeTile(p, y, wallHalf, 0);
+        case 2: return makeTile(-wallHalf, y, p, Math.PI / 2);
+        default: return makeTile(p, y, -wallHalf, 0);
+      }
+    });
+    const tiles = [];
+    for (const suit of ['萬', '筒', '索']) for (let n = 1; n <= 9; n++) for (let copy = 0; copy < 4; copy++) tiles.push(n + suit);
+    for (const honor of ['東', '南', '西', '北', '中', '發', '白']) for (let copy = 0; copy < 4; copy++) tiles.push(honor);
+    for (const flower of ['梅', '蘭', '菊', '竹', '春', '夏', '秋', '冬']) tiles.push(flower);
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+    function renderHand(hand) {
+      handEl.replaceChildren();
+      for (const label of hand) {
+        const tile = document.createElement('div');
+        tile.className = 'tile2d' + (label === '中' ? ' red' : label === '發' ? ' green' : '');
+        tile.textContent = label;
+        handEl.appendChild(tile);
+      }
+    }
+    function deal() {
+      for (const mesh of wallMeshes) mesh.visible = true;
+      const shuffled = shuffle([...tiles]);
+      const dice = [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
+      const total = dice[0] + dice[1];
+      const start = breakIndex(total);
+      const dealt = consumedIndices(start, 53);
+      const hands = [[], [], [], []];
+      dealt.forEach((index, turn) => {
+        wallMeshes[index].visible = false;
+        hands[turn % 4].push(shuffled[index]);
+      });
+      renderHand(hands[0]);
+      const origin = positions[start];
+      status.innerHTML = `<b>배패 완료</b><br>주사위 ${dice[0]} + ${dice[1]} = ${total}<br>${SIDE_NAMES[origin.side]}쪽 벽 ${origin.stack + 1}번째 쌍에서 개벽<br>동 14장 · 남/서/북 13장 · 벽 91장 남음`;
+    }
+    document.getElementById('deal').addEventListener('click', deal);
+    document.getElementById('resetCam').addEventListener('click', () => {
+      camera.position.set(8.8, 8.1, 10.5);
+      controls.target.set(0, .4, 0);
+      controls.update();
+    });
+    let angle = 0;
+    document.getElementById('rotate').addEventListener('click', () => {
+      angle += Math.PI / 2;
+      camera.position.set(Math.sin(angle) * 13, 8.1, Math.cos(angle) * 13);
+      controls.update();
+    });
+    function resize() {
+      const width = host.clientWidth, height = host.clientHeight;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(host);
+    resize();
+    function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); }
+    loop();
+    status.innerHTML = '<b>3D 테이블 준비됨</b><br>18쌍 × 2층 × 4면<br>새 판 / 배패를 눌러보세요.';
+  </script>
+</body>
+</html>
