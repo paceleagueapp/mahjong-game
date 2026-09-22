@@ -34,12 +34,12 @@ export function consumedIndices(start, count) {
 export function dealSequence(start) {
   const indices = consumedIndices(start, 53);
   const players = [];
-  // Three passes of four tiles per player, then one each and a final East tile.
+  // Three passes of four tiles per player, then East takes two and each other player one.
   for (let round = 0; round < 3; round++) {
     for (let player = 0; player < 4; player++) {
       for (let tile = 0; tile < 4; tile++) players.push(player);
     }
   }
-  players.push(0, 1, 2, 3, 0);
+  players.push(0, 0, 1, 2, 3);
   return indices.map((index, turn) => ({ index, player: players[turn] }));
 }

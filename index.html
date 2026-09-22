@@ -14,7 +14,7 @@
     button.alt { background: #333; }
     .scene { height: min(72vw, 650px); min-height: 380px; border-radius: 18px; overflow: hidden; background: #0d3d30; border: 1px solid #444; position: relative; }
     .scene canvas { display: block; width: 100%; height: 100%; }
-    .status { position: absolute; left: 12px; top: 12px; background: #000a; padding: 9px 11px; border-radius: 10px; font-size: 13px; line-height: 1.5; pointer-events: none; }
+    .status { position: absolute; left: 12px; top: 12px; max-width: 65%; background: #000a; padding: 9px 11px; border-radius: 10px; font-size: 13px; line-height: 1.5; white-space: pre-line; pointer-events: none; }
     .seat-badge { position: absolute; z-index: 2; transform: translate(-50%, -50%); border: 1px solid #d4b474; border-radius: 8px; background: #102e26e8; color: #fff; padding: 5px 8px; white-space: nowrap; font-size: 12px; font-weight: 800; box-shadow: 0 2px 5px #0008; pointer-events: none; }
     .help { font-size: 13px; color: #bbb; margin-top: 8px; }
     .players { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
@@ -26,6 +26,16 @@
     .tile2d.red { color: #c43832; }
     .tile2d.green { color: #26734c; }
     .tile2d.back { background: #83bb43; border: 2px solid #d5e6b3; border-bottom: 5px solid #477b2c; }
+    button.tile2d { padding: 0; cursor: pointer; }
+    .tile2d.selected { outline: 3px solid #f5c84a; transform: translateY(-6px); }
+    .game-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+    .game-controls button:disabled { opacity: .45; cursor: default; }
+    .claim-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .melds, .discards, .flowers { margin-top: 9px; font-size: 12px; color: #bbb; line-height: 1.7; }
+    .smalltile { display: inline-block; margin: 2px 2px 0 0; padding: 2px 4px; border-radius: 3px; background: #ece8d8; color: #222; font-weight: 800; }
+    details.rules { margin-top: 12px; padding: 12px 14px; border: 1px solid #40584c; border-radius: 12px; background: #17251f; font-size: 14px; line-height: 1.6; }
+    .rules summary { cursor: pointer; font-weight: 800; }
+    .rules ol { padding-left: 20px; }
     @media (max-width: 650px) { .players { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -33,14 +43,33 @@
   <main class="app">
     <div class="bar">
       <div><b>Three.js 3D 홍콩 마작</b><div style="font-size:13px;color:#aaa">3D 게임 구조 프로토타입</div></div>
-      <div class="actions"><button id="deal">새 판 / 배패</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
+      <div class="actions"><button id="deal">새 게임</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
     <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div></div>
     <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 벽은 한 면에 18쌍(2층)입니다. 상대 패는 뒷면만 표시합니다.</div>
+    <div class="game-controls">
+      <button id="drawTile" disabled>패 뽑기</button>
+      <button id="discardTile" disabled>선택한 패 버리기</button>
+      <button id="win" disabled>화료</button>
+      <button id="kong" disabled>암깡</button>
+      <div id="claimActions" class="claim-actions" aria-live="polite"></div>
+    </div>
     <div class="players" id="players" aria-live="polite"></div>
+    <details class="rules" open>
+      <summary>처음 하는 사람을 위한 규칙과 조작</summary>
+      <ol>
+        <li><b>새 게임</b>을 누르면 동(나) 14장, 남·서·북 13장으로 시작합니다. 동은 패를 하나 선택해 버립니다.</li>
+        <li>그다음부터는 자기 차례에 <b>패 뽑기</b>를 누르고, 손패 하나를 눌러 선택한 뒤 <b>선택한 패 버리기</b>를 누릅니다. 상대 차례는 자동으로 진행됩니다.</li>
+        <li>목표는 <b>세 장짜리 묶음 네 개와 같은 패 두 장</b>입니다. 묶음은 같은 패 세 장(퐁) 또는 같은 종류의 연속 숫자 세 장(치)입니다. 네 장의 같은 패(깡)는 묶음 하나로 세고 보충패를 뽑습니다.</li>
+        <li>상대가 버린 패로 완성하면 <b>화료</b>를 누를 수 있습니다. 퐁·깡은 누구의 버림패든, 치는 바로 앞 플레이어의 버림패만 가져올 수 있습니다. 가져온 묶음은 공개하고 패 한 장을 버립니다.</li>
+        <li>꽃·계절패는 즉시 공개하고 벽 뒤쪽에서 보충패를 가져옵니다. 벽이 떨어지면 유국입니다.</li>
+      </ol>
+      <p>처음 배우는 용도로 한 판만 진행합니다. 점수·최소 번수·특수 화료형은 적용하지 않습니다. <a href="https://c.tabletopia.com/games/old-hong-kong-mahjong/rules/mahjong-rules/en" target="_blank" rel="noopener">홍콩식 마작 규칙 참고</a></p>
+    </details>
   </main>
   <script type="module">
-    import { SIDE_NAMES, wallOrder, breakIndex, dealSequence } from './wall.js?v=24c2146';
+    import { SIDE_NAMES, wallOrder, breakIndex, consumedIndices, dealSequence } from './wall.js?v=gameplay-1';
+    import { isFlower, sortTiles, canWin, chowOptions, chooseDiscard } from './game.js?v=gameplay-1';
     const host = document.getElementById('scene');
     const status = document.getElementById('status');
     const playersEl = document.getElementById('players');
@@ -157,6 +186,51 @@
         });
       });
     }
+    const discardGroups = SIDE_NAMES.map((_, side) => {
+      const group = new THREE.Group();
+      const seat = [[2.4, 0, 0], [0, 0, 2.4], [-2.4, 0, 0], [0, 0, -2.4]][side];
+      group.position.set(...seat);
+      group.rotation.y = [Math.PI / 2, 0, -Math.PI / 2, Math.PI][side];
+      scene.add(group);
+      return group;
+    });
+    const discardGeometry = new THREE.BoxGeometry(.31, .1, .4);
+    const discardFaceGeometry = new THREE.PlaneGeometry(.27, .35);
+    const discardFaces = new Map();
+    function discardMaterial(label) {
+      if (discardFaces.has(label)) return discardFaces.get(label);
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#f7f4e9';
+      ctx.fillRect(0, 0, 128, 160);
+      ctx.fillStyle = label === '中' ? '#c43832' : label === '發' ? '#26734c' : '#202020';
+      ctx.font = 'bold 54px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, 64, 80);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+      discardFaces.set(label, material);
+      return material;
+    }
+    function renderDiscards(discards) {
+      discardGroups.forEach((group, side) => {
+        group.clear();
+        discards[side].forEach((label, index) => {
+          const tile = new THREE.Group();
+          tile.add(new THREE.Mesh(discardGeometry, ivory));
+          const face = new THREE.Mesh(discardFaceGeometry, discardMaterial(label));
+          face.rotation.x = -Math.PI / 2;
+          face.position.y = .052;
+          tile.add(face);
+          tile.position.set((index % 6 - 2.5) * .35, .05, (Math.floor(index / 6) - 1.5) * .44);
+          group.add(tile);
+        });
+      });
+    }
     const tiles = [];
     for (const suit of ['萬', '筒', '索']) for (let n = 1; n <= 9; n++) for (let copy = 0; copy < 4; copy++) tiles.push(n + suit);
     for (const honor of ['東', '南', '西', '北', '中', '發', '白']) for (let copy = 0; copy < 4; copy++) tiles.push(honor);
@@ -168,6 +242,19 @@
       }
       return array;
     }
+    const drawButton = document.getElementById('drawTile');
+    const discardButton = document.getElementById('discardTile');
+    const winButton = document.getElementById('win');
+    const kongButton = document.getElementById('kong');
+    const claimActions = document.getElementById('claimActions');
+    let game = null, aiTimer = null;
+    function schedule(action) {
+      clearTimeout(aiTimer);
+      aiTimer = setTimeout(action, 650);
+    }
+    function remaining() { return game.back - game.front + 1; }
+    function countTile(hand, tile) { return hand.filter(value => value === tile).length; }
+    function concealedKong(player) { return game.hands[player].find(tile => countTile(game.hands[player], tile) === 4); }
     function renderHands(hands) {
       renderTableHands(hands);
       playersEl.replaceChildren();
@@ -185,34 +272,280 @@
         title.append(name, count);
         const row = document.createElement('div');
         row.className = 'hand';
-        for (const label of hand) {
-          const tile = document.createElement('div');
-          tile.className = 'tile2d' + (player === 0 ? (label === '中' ? ' red' : label === '發' ? ' green' : '') : ' back');
-          if (player === 0) tile.textContent = label;
+        hand.forEach((label, index) => {
+          const shown = player === 0 || game?.winner === player;
+          const tile = document.createElement(player === 0 ? 'button' : 'div');
+          if (player === 0) tile.type = 'button';
+          tile.className = 'tile2d' + (shown ? (label === '中' ? ' red' : label === '發' ? ' green' : '') : ' back') + (player === 0 && game?.selected === index ? ' selected' : '');
+          if (shown) tile.textContent = label;
           else tile.setAttribute('aria-label', '숨긴 패');
+          if (player === 0) tile.addEventListener('click', () => {
+            if (!game || game.phase !== 'discard' || game.current !== 0) return;
+            game.selected = index;
+            renderGame();
+          });
           row.appendChild(tile);
-        }
+        });
         panel.append(title, row);
+        if (game) {
+          const flowers = document.createElement('div');
+          flowers.className = 'flowers';
+          flowers.textContent = `꽃·계절: ${game.flowers[player].join(' ') || '없음'}`;
+          panel.appendChild(flowers);
+          if (game.melds[player].length) {
+            const melds = document.createElement('div');
+            melds.className = 'melds';
+            melds.textContent = `공개 묶음: ${game.melds[player].map(meld => `${meld.type}(${meld.tiles.join(' ')})`).join(' · ')}`;
+            panel.appendChild(melds);
+          }
+          const discards = document.createElement('div');
+          discards.className = 'discards';
+          discards.textContent = '버린 패: ';
+          game.discards[player].forEach(label => {
+            const chip = document.createElement('span');
+            chip.className = 'smalltile';
+            chip.textContent = label;
+            discards.appendChild(chip);
+          });
+          panel.appendChild(discards);
+        }
         playersEl.appendChild(panel);
       });
     }
+    function renderGame() {
+      renderHands(game?.hands || [[], [], [], []]);
+      if (!game) return;
+      renderDiscards(game.discards);
+      status.textContent = `${game.message}\n벽 ${remaining()}장 남음`;
+      drawButton.disabled = game.phase !== 'draw' || game.current !== 0;
+      discardButton.disabled = game.phase !== 'discard' || game.current !== 0 || game.selected === null;
+      winButton.disabled = !(game.phase === 'discard' && game.current === 0 && canWin(game.hands[0], game.melds[0].length));
+      const kong = game.phase === 'discard' && game.current === 0 && concealedKong(0);
+      kongButton.disabled = !kong || remaining() === 0;
+      kongButton.textContent = kong ? `암깡 ${kong}` : '암깡';
+      claimActions.replaceChildren();
+      if (game.phase !== 'claim') return;
+      const offer = (label, action) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.addEventListener('click', action);
+        claimActions.appendChild(button);
+      };
+      const { tile, options } = game.pending;
+      if (options.win) offer(`화료 ${tile}`, () => finishWin(0, `${SIDE_NAMES[game.pending.discarder]}의 버림패 ${tile}`));
+      if (options.kong) offer(`깡 ${tile}`, () => humanClaim('깡', [tile, tile, tile]));
+      if (options.pong) offer(`퐁 ${tile}`, () => humanClaim('퐁', [tile, tile]));
+      options.chows.forEach(needed => offer(`치 ${[...needed, tile].join(' ')}`, () => humanClaim('치', needed)));
+      offer('넘기기', passClaim);
+    }
+    function takeTile(player, fromBack = false) {
+      while (game.front <= game.back) {
+        const index = game.order[fromBack ? game.back-- : game.front++];
+        wallMeshes[index].visible = false;
+        const tile = game.shuffled[index];
+        if (isFlower(tile)) {
+          game.flowers[player].push(tile);
+          fromBack = true;
+          continue;
+        }
+        game.hands[player].push(tile);
+        game.hands[player] = sortTiles(game.hands[player]);
+        return tile;
+      }
+      return null;
+    }
+    function finishWin(player, method) {
+      if (game.pending && player === 0) {
+        game.discards[game.pending.discarder].pop();
+        game.hands[0].push(game.pending.tile);
+      }
+      game.hands[player] = sortTiles(game.hands[player]);
+      game.winner = player;
+      game.phase = 'done';
+      game.pending = null;
+      game.message = `${SIDE_NAMES[player]} 화료! ${method}\n네 묶음과 한 쌍 완성`;
+      renderGame();
+    }
+    function finishDraw() {
+      game.phase = 'done';
+      game.message = '유국 · 벽의 패를 모두 사용했습니다. 새 게임을 눌러 다시 시작하세요.';
+      renderGame();
+    }
+    function startNext(discarder) {
+      if (remaining() === 0) return finishDraw();
+      game.current = (discarder + 1) % 4;
+      game.phase = 'draw';
+      game.message = `${SIDE_NAMES[game.current]} 차례 · ${game.current === 0 ? '패 뽑기를 누르세요' : '패를 뽑는 중…'}`;
+      renderGame();
+      if (game.current !== 0) schedule(aiTurn);
+    }
+    function removeTiles(player, needed) {
+      for (const tile of needed) game.hands[player].splice(game.hands[player].indexOf(tile), 1);
+    }
+    function makeMeld(player, type, tile, needed, discarder) {
+      game.discards[discarder].pop();
+      removeTiles(player, needed);
+      game.melds[player].push({ type, tiles: sortTiles([...needed, tile]) });
+      game.pending = null;
+      game.current = player;
+      game.phase = 'discard';
+      game.selected = null;
+      if (type === '깡' && !takeTile(player, true)) return finishDraw();
+      if (canWin(game.hands[player], game.melds[player].length) && player !== 0) return finishWin(player, '보충패로 완성');
+      game.message = `${SIDE_NAMES[player]} ${type}! ${player === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`;
+      renderGame();
+      if (player !== 0) schedule(aiDiscard);
+    }
+    function humanClaim(type, needed) {
+      const { tile, discarder } = game.pending;
+      makeMeld(0, type, tile, needed, discarder);
+    }
+    function aiClaims(discarder, tile) {
+      for (let distance = 1; distance < 4; distance++) {
+        const player = (discarder + distance) % 4;
+        if (player === 0 || game.melds[player].length === 4) continue;
+        if (countTile(game.hands[player], tile) >= 3 && remaining() > 0) return makeMeld(player, '깡', tile, [tile, tile, tile], discarder);
+        if (countTile(game.hands[player], tile) >= 2) return makeMeld(player, '퐁', tile, [tile, tile], discarder);
+      }
+      const next = (discarder + 1) % 4;
+      if (next !== 0 && game.melds[next].length < 4) {
+        const chow = chowOptions(game.hands[next], tile)[0];
+        if (chow) return makeMeld(next, '치', tile, chow, discarder);
+      }
+      startNext(discarder);
+    }
+    function passClaim() {
+      const { tile, discarder } = game.pending;
+      game.pending = null;
+      resolveAIClaims(discarder, tile);
+    }
+    function aiWinner(discarder, tile) {
+      for (let distance = 1; distance < 4; distance++) {
+        const player = (discarder + distance) % 4;
+        if (player !== 0 && canWin([...game.hands[player], tile], game.melds[player].length)) return player;
+      }
+      return null;
+    }
+    function resolveAIClaims(discarder, tile) {
+      const winner = aiWinner(discarder, tile);
+      if (winner !== null) {
+        game.discards[discarder].pop();
+        game.hands[winner].push(tile);
+        return finishWin(winner, `${SIDE_NAMES[discarder]}의 버림패 ${tile}`);
+      }
+      aiClaims(discarder, tile);
+    }
+    function resolveDiscard(discarder, tile) {
+      if (discarder !== 0) {
+        const next = (discarder + 1) % 4;
+        const open = game.melds[0].length;
+        const options = {
+          win: canWin([...game.hands[0], tile], open),
+          pong: open < 4 && countTile(game.hands[0], tile) >= 2,
+          kong: open < 4 && countTile(game.hands[0], tile) >= 3 && remaining() > 0,
+          chows: next === 0 && open < 4 ? chowOptions(game.hands[0], tile) : []
+        };
+        if (!options.win && aiWinner(discarder, tile) !== null) return resolveAIClaims(discarder, tile);
+        if (options.win || options.pong || options.kong || options.chows.length) {
+          game.pending = { discarder, tile, options };
+          game.phase = 'claim';
+          game.message = `${SIDE_NAMES[discarder]}가 ${tile} 버림 · 가져오거나 넘기세요`;
+          return renderGame();
+        }
+      }
+      resolveAIClaims(discarder, tile);
+    }
+    function aiDiscard() {
+      if (game.phase !== 'discard' || game.current === 0) return;
+      const player = game.current;
+      const index = chooseDiscard(game.hands[player]);
+      const [tile] = game.hands[player].splice(index, 1);
+      game.discards[player].push(tile);
+      game.message = `${SIDE_NAMES[player]}가 ${tile} 버림`;
+      game.phase = 'waiting';
+      renderGame();
+      schedule(() => resolveDiscard(player, tile));
+    }
+    function aiTurn() {
+      if (game.phase !== 'draw' || game.current === 0) return;
+      const player = game.current;
+      const tile = takeTile(player);
+      if (!tile) return finishDraw();
+      if (canWin(game.hands[player], game.melds[player].length)) return finishWin(player, `벽에서 ${tile} 뽑음`);
+      const kong = concealedKong(player);
+      if (kong && remaining() > 0) {
+        removeTiles(player, [kong, kong, kong, kong]);
+        game.melds[player].push({ type: '암깡', tiles: [kong, kong, kong, kong] });
+        if (!takeTile(player, true)) return finishDraw();
+        if (canWin(game.hands[player], game.melds[player].length)) return finishWin(player, '암깡 보충패로 완성');
+      }
+      game.phase = 'discard';
+      game.message = `${SIDE_NAMES[player]}가 패를 뽑았습니다`;
+      renderGame();
+      schedule(aiDiscard);
+    }
     function deal() {
+      clearTimeout(aiTimer);
       for (const mesh of wallMeshes) mesh.visible = true;
       const shuffled = shuffle([...tiles]);
       const dice = [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
       const total = dice[0] + dice[1];
       const start = breakIndex(total);
-      const dealt = dealSequence(start);
-      const hands = [[], [], [], []];
-      dealt.forEach(({ index, player }) => {
+      game = {
+        shuffled, order: consumedIndices(start, 144), front: 53, back: 143,
+        hands: [[], [], [], []], melds: [[], [], [], []], flowers: [[], [], [], []], discards: [[], [], [], []],
+        current: 0, phase: 'discard', selected: null, pending: null, winner: null, message: ''
+      };
+      dealSequence(start).forEach(({ index, player }) => {
         wallMeshes[index].visible = false;
-        hands[player].push(shuffled[index]);
+        game.hands[player].push(shuffled[index]);
       });
-      renderHands(hands);
+      for (let player = 0; player < 4; player++) {
+        for (let i = game.hands[player].length - 1; i >= 0; i--) {
+          if (!isFlower(game.hands[player][i])) continue;
+          game.flowers[player].push(game.hands[player].splice(i, 1)[0]);
+          if (!takeTile(player, true)) return finishDraw();
+        }
+        game.hands[player] = sortTiles(game.hands[player]);
+      }
       const origin = positions[start];
-      status.innerHTML = `<b>배패 완료</b><br>주사위 ${dice[0]} + ${dice[1]} = ${total}<br>${SIDE_NAMES[origin.side]}쪽 벽 ${origin.stack + 1}번째 쌍에서 개벽<br>동 14장 · 남/서/북 13장 · 벽 91장 남음`;
+      game.message = `배패 완료 · 주사위 ${dice[0]}+${dice[1]}=${total}\n${SIDE_NAMES[origin.side]}쪽 벽 ${origin.stack + 1}번째 쌍에서 개벽\n동 차례 · 패를 선택해 버리세요`;
+      renderGame();
     }
     document.getElementById('deal').addEventListener('click', deal);
+    drawButton.addEventListener('click', () => {
+      if (!game || game.phase !== 'draw' || game.current !== 0) return;
+      const tile = takeTile(0);
+      if (!tile) return finishDraw();
+      game.phase = 'discard';
+      game.message = `${tile} 뽑음 · 패를 선택해 버리세요`;
+      renderGame();
+    });
+    discardButton.addEventListener('click', () => {
+      if (!game || game.phase !== 'discard' || game.current !== 0 || game.selected === null) return;
+      const [tile] = game.hands[0].splice(game.selected, 1);
+      game.discards[0].push(tile);
+      game.selected = null;
+      game.phase = 'waiting';
+      game.message = `동이 ${tile} 버림 · 상대 차례 진행 중…`;
+      renderGame();
+      schedule(() => resolveDiscard(0, tile));
+    });
+    winButton.addEventListener('click', () => {
+      if (game?.phase === 'discard' && game.current === 0 && canWin(game.hands[0], game.melds[0].length)) finishWin(0, '직접 뽑아 완성');
+    });
+    kongButton.addEventListener('click', () => {
+      if (!game || game.phase !== 'discard' || game.current !== 0 || remaining() === 0) return;
+      const tile = concealedKong(0);
+      if (!tile) return;
+      removeTiles(0, [tile, tile, tile, tile]);
+      game.melds[0].push({ type: '암깡', tiles: [tile, tile, tile, tile] });
+      if (!takeTile(0, true)) return finishDraw();
+      game.selected = null;
+      game.message = `${tile} 암깡 · 보충패를 가져왔습니다`;
+      renderGame();
+    });
     document.getElementById('resetCam').addEventListener('click', () => {
       camera.position.set(8.8, 8.1, 10.5);
       controls.target.set(0, .4, 0);
@@ -235,7 +568,7 @@
     function loop() { controls.update(); positionSeatBadges(); renderer.render(scene, camera); requestAnimationFrame(loop); }
     loop();
     renderHands([[], [], [], []]);
-    status.innerHTML = '<b>3D 테이블 준비됨</b><br>18쌍(2층) × 4면<br>새 판 / 배패를 눌러보세요.';
+    status.textContent = '3D 테이블 준비됨\n새 게임을 눌러 시작하세요.';
   </script>
 </body>
 </html>
