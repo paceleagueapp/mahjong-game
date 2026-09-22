@@ -25,6 +25,7 @@
     .tile2d { width: 36px; height: 48px; border-radius: 5px; background: #f7f4e9; color: #222; border-bottom: 5px solid #73a94d; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; box-shadow: 0 2px 4px #0008; }
     .tile2d.red { color: #c43832; }
     .tile2d.green { color: #26734c; }
+    .tile2d.back { background: #83bb43; border: 2px solid #d5e6b3; border-bottom: 5px solid #477b2c; }
     @media (max-width: 650px) { .players { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -35,7 +36,7 @@
       <div class="actions"><button id="deal">새 판 / 배패</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
     <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div></div>
-    <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 벽은 한 면에 18쌍(2층)입니다.</div>
+    <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 벽은 한 면에 18쌍(2층)입니다. 상대 패는 뒷면만 표시합니다.</div>
     <div class="players" id="players" aria-live="polite"></div>
   </main>
   <script type="module">
@@ -117,34 +118,11 @@
         default: return makeTile(p, y, -wallHalf, 0);
       }
     });
-    function labelTexture(label, color = '#202020', background = '#f7f4e9') {
-      const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 160;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = background;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = color;
-      ctx.font = 'bold 72px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, 64, 82);
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      return texture;
-    }
-    const playerGroups = SIDE_NAMES.map((name, side) => {
+    const playerGroups = SIDE_NAMES.map((_, side) => {
       const group = new THREE.Group();
-      const seat = [[3.25, 0, 0], [0, 0, 3.25], [-3.25, 0, 0], [0, 0, -3.25]][side];
+      const seat = [[5.55, 0, 0], [0, 0, 5.55], [-5.55, 0, 0], [0, 0, -5.55]][side];
       group.position.set(...seat);
-      group.rotation.y = [-Math.PI / 2, 0, Math.PI / 2, Math.PI][side];
-      const nameplate = new THREE.Mesh(
-        new THREE.PlaneGeometry(.9, .48),
-        new THREE.MeshBasicMaterial({ map: labelTexture(name, '#ffffff', '#164b3c'), side: THREE.DoubleSide })
-      );
-      nameplate.rotation.x = -Math.PI / 2;
-      nameplate.position.set(0, .012, .57);
-      group.add(nameplate);
+      group.rotation.y = [Math.PI / 2, 0, -Math.PI / 2, Math.PI][side];
       scene.add(group);
       return group;
     });
@@ -157,31 +135,24 @@
     });
     function positionSeatBadges() {
       playerGroups.forEach((group, side) => {
-        const point = group.localToWorld(new THREE.Vector3(0, .25, .85)).project(camera);
+        const point = group.localToWorld(new THREE.Vector3(0, 1.12, -.8)).project(camera);
         seatBadges[side].style.left = `${(point.x + 1) * host.clientWidth / 2}px`;
         seatBadges[side].style.top = `${(1 - point.y) * host.clientHeight / 2}px`;
       });
     }
-    const faceCache = new Map();
     function renderTableHands(hands) {
       playerGroups.forEach((group, side) => {
-        while (group.children.length > 1) group.remove(group.children[group.children.length - 1]);
-        hands[side].forEach((label, index) => {
+        group.clear();
+        hands[side].forEach((_, index) => {
           const tile = new THREE.Group();
-          const body = new THREE.Mesh(new THREE.BoxGeometry(.36, .14, .46), ivory);
+          const body = new THREE.Mesh(new THREE.BoxGeometry(.36, .62, .16), ivory);
+          body.position.y = .31;
           body.castShadow = body.receiveShadow = true;
           tile.add(body);
-          const color = label === '中' ? '#c43832' : label === '發' ? '#26734c' : '#202020';
-          const key = `${label}:${color}`;
-          if (!faceCache.has(key)) faceCache.set(key, labelTexture(label, color));
-          const face = new THREE.Mesh(
-            new THREE.PlaneGeometry(.31, .39),
-            new THREE.MeshBasicMaterial({ map: faceCache.get(key), side: THREE.DoubleSide })
-          );
-          face.rotation.x = -Math.PI / 2;
-          face.position.y = .072;
-          tile.add(face);
-          tile.position.set((index - (hands[side].length - 1) / 2) * .4, .09, -.06);
+          const back = new THREE.Mesh(new THREE.BoxGeometry(.32, .57, .02), green);
+          back.position.set(0, .31, -.09);
+          tile.add(back);
+          tile.position.x = (index - (hands[side].length - 1) / 2) * .4;
           group.add(tile);
         });
       });
@@ -216,8 +187,9 @@
         row.className = 'hand';
         for (const label of hand) {
           const tile = document.createElement('div');
-          tile.className = 'tile2d' + (label === '中' ? ' red' : label === '發' ? ' green' : '');
-          tile.textContent = label;
+          tile.className = 'tile2d' + (player === 0 ? (label === '中' ? ' red' : label === '發' ? ' green' : '') : ' back');
+          if (player === 0) tile.textContent = label;
+          else tile.setAttribute('aria-label', '숨긴 패');
           row.appendChild(tile);
         }
         panel.append(title, row);
