@@ -52,7 +52,7 @@
     .game-controls button.caution { background: #9b6227; }
     .claim-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .match-bar { margin-top: 9px; padding: 9px 11px; border-radius: 10px; background: #18372c; color: #e9f3eb; font-size: 13px; line-height: 1.5; }
-    .result { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(90%, 430px); max-height: 85%; overflow: auto; padding: 18px; border: 2px solid #dfbe70; border-radius: 16px; background: #102b24f5; box-shadow: 0 12px 35px #000b; text-align: center; }
+    .result { position: fixed; z-index: 20; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(calc(100vw - 32px), 430px); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; padding: 20px; border: 2px solid #dfbe70; border-radius: 16px; background: #102b24; box-shadow: 0 0 0 999px #000a, 0 12px 35px #000b; text-align: center; }
     .result.victory { border-color: #ffe18c; box-shadow: 0 0 0 999px #0005, 0 0 40px #e7bd4b; animation: victoryEnter .6s ease-out both; }
     .result.victory h2 { color: #ffe18c; font-size: 28px; text-shadow: 0 0 18px #f9d96b; }
     @keyframes victoryEnter { from { opacity: 0; transform: translate(-50%, -40%) scale(.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
@@ -62,6 +62,7 @@
     .result p { margin: 8px 0; line-height: 1.5; }
     .result .score { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; color: #f3dc97; font-weight: 800; }
     .result .score span { padding: 4px 6px; border-radius: 6px; background: #23483a; }
+    .result #nextHand { position: sticky; bottom: 0; width: 100%; margin-top: 10px; padding: 14px; box-shadow: 0 -8px 18px #102b24; }
     .discard-viewer { position: absolute; z-index: 3; left: 50%; top: 48%; transform: translate(-50%, -50%); width: min(82%, 310px); border: 1px solid #d2b575; border-radius: 12px; background: #112b25ed; box-shadow: 0 6px 20px #0009; color: white; }
     .discard-viewer[hidden] { display: none; }
     .discard-viewer summary { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 9px; cursor: pointer; font-size: 12px; list-style: none; }
@@ -294,6 +295,7 @@
     const claimActions = document.getElementById('claimActions');
     let game = null, match = null, aiTimer = null, highlightTimer = null;
     const result = document.getElementById('result');
+    document.body.appendChild(result);
     const matchBar = document.getElementById('matchBar');
     const discardViewer = document.getElementById('discardViewer');
     const playerLabel = player => `${SIDE_NAMES[(player - (match?.dealer || 0) + 4) % 4]}${player === 0 ? '(나)' : ''}`;
