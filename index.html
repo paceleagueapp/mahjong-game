@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3D 홍콩 마작 v0.7.0</title>
+  <title>3D 홍콩 마작 v0.8.0</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif; }
     .app { max-width: 1100px; margin: auto; padding: 12px; }
     .bar, .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .bar { justify-content: space-between; margin-bottom: 10px; }
+    .language-select { border: 1px solid #555; border-radius: 8px; padding: 8px; background: #222; color: #fff; font-weight: 700; }
     .title-line { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
     .version { display: inline-block; padding: 2px 6px; border: 1px solid #4f8d77; border-radius: 999px; background: #17382e; color: #9ce0c7; font-size: 10px; font-weight: 800; letter-spacing: .02em; }
     button { border: 0; border-radius: 10px; padding: 11px 14px; font-weight: 800; background: #1d765d; color: white; cursor: pointer; }
@@ -87,17 +88,19 @@
     details.rules { margin-top: 12px; padding: 12px 14px; border: 1px solid #40584c; border-radius: 12px; background: #17251f; font-size: 14px; line-height: 1.6; }
     .rules summary { cursor: pointer; font-weight: 800; }
     .rules ol { padding-left: 20px; }
+    html[lang="ko"] .lang-en, html[lang="en"] .lang-ko { display: none; }
+    html[lang="en"] .tile2d.drawn::after { content: 'DRAWN'; }
     @media (max-width: 650px) { .players { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <main class="app">
     <div class="bar">
-      <div><div class="title-line"><b>3D 홍콩 마작</b><span class="version" title="2026-09-23 배포">v0.7.0</span></div><div style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
-      <div class="actions"><button id="deal">새 게임</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
+      <div><div class="title-line"><b id="appTitle">3D 홍콩 마작</b><span class="version" title="2026-09-23 배포">v0.8.0</span></div><div id="appSubtitle" style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
+      <div class="actions"><select id="languageSelect" class="language-select" aria-label="언어"><option value="ko">한국어</option><option value="en">English</option></select><button id="deal">새 게임</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
     <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div><details id="discardViewer" class="discard-viewer" hidden><summary><span id="latestDiscardPlayer"></span><strong id="latestDiscardTile"></strong><span id="latestDiscardState"></span></summary><div id="discardHistory" class="discard-history"></div></details><section id="result" class="result" hidden aria-live="assertive"><h2 id="resultTitle"></h2><p id="resultText"></p><div id="winDetail" class="win-detail" hidden></div><p id="resultScore" class="score"></p><button id="nextHand">다음 판</button></section></div>
-    <div class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 가운데 최근 버림패를 누르면 전체 버림패가 보입니다. 상대 패는 뒷면만 표시합니다.</div>
+    <div id="help" class="help">드래그: 시점 회전 · 휠/핀치: 확대/축소 · 가운데 최근 버림패를 누르면 전체 버림패가 보입니다. 상대 패는 뒷면만 표시합니다.</div>
     <div class="game-controls">
       <button id="drawTile" disabled>패 뽑기</button>
       <button id="discardTile" disabled>선택한 패 버리기</button>
@@ -109,8 +112,8 @@
     <div id="challengeBar" class="challenge-bar" hidden></div>
     <div class="players" id="players" aria-live="polite"></div>
     <details class="rules" open>
-      <summary>처음 하는 사람을 위한 규칙과 조작</summary>
-      <ol>
+      <summary><span class="lang-ko">처음 하는 사람을 위한 규칙과 조작</span><span class="lang-en">Beginner rules and controls</span></summary>
+      <div class="lang-ko"><ol>
         <li><b>새 게임</b>을 누르면 첫 판은 동(나) 14장으로 시작합니다. 동은 패를 하나 선택해 버립니다. 한 판이 끝나면 <b>다음 판</b>으로 이어지고 동 자리는 순서대로 바뀝니다.</li>
         <li>그다음부터는 자기 차례에 <b>패 뽑기</b>를 누르고, 손패 하나를 눌러 선택한 뒤 <b>선택한 패 버리기</b>를 누릅니다. 상대 차례는 자동으로 진행됩니다.</li>
         <li><b>하늘색</b>은 방금 뽑은 패입니다. 손패의 <b>보라색</b>은 완성된 묶음, <b>초록색</b>은 같은 패 짝, <b>노란색</b>은 연속패 후보입니다. 색은 버릴 패를 고르는 참고 표시이며 화료를 보장하지 않습니다.</li>
@@ -121,11 +124,25 @@
         <li>각 판에는 보너스 미션이 있습니다. 비공개 미션에서는 치·퐁을 참을지, 빠른 완성을 위해 공개할지 선택해야 합니다. 상대가 화료에 가까워지면 위험 경고가 표시됩니다.</li>
       </ol>
       <p>처음 배우는 용도로 승리 여부와 관계없이 동 자리를 한 번씩 맡는 4판을 진행합니다. 화료마다 기본 100점, 직접 뽑기 30점, 손패에 남긴 묶음마다 10점, 깡마다 15점, 꽃·계절패마다 5점을 받습니다. 이는 연습용 점수이며 정식 홍콩식 번수·특수 화료형은 적용하지 않습니다. <a href="https://c.tabletopia.com/games/old-hong-kong-mahjong/rules/mahjong-rules/en" target="_blank" rel="noopener">홍콩식 마작 규칙 참고</a></p>
+      </div>
+      <div class="lang-en"><ol>
+        <li>Press <b>New Game</b> to begin. East starts with 14 tiles and discards one. After each hand, press <b>Next Hand</b>; the East seat rotates.</li>
+        <li>On your turn, press <b>Draw Tile</b>, select a tile, then press <b>Discard Selected Tile</b>. Opponents play automatically.</li>
+        <li><b>Cyan</b> marks the tile just drawn. <b>Purple</b> marks complete groups, <b>green</b> pairs, and <b>yellow</b> sequence candidates. These are hints, not guaranteed wins.</li>
+        <li>The number on a tile shows the distance to a winning hand after discarding it. <b>Ready</b> means one tile completes the hand and shows the winning tiles.</li>
+        <li>The goal is <b>four groups of three plus one identical pair</b>. A group is a pong, chow, or kong.</li>
+        <li>You may win using any opponent's latest discard. Pong and kong may claim any discard; chow may claim only from the player immediately before you.</li>
+        <li>Flower and season tiles are revealed immediately and replaced from the back of the wall. An empty wall ends the hand in a draw.</li>
+        <li>Each hand has a bonus mission. Decide whether to keep your hand concealed or reveal groups for a faster win. Warnings appear when an opponent is close to winning.</li>
+      </ol><p>This beginner match plays four hands. Practice scoring awards 100 points for a win, 30 for self draw, 10 per concealed group, 15 per kong, and 5 per flower or season. Official Hong Kong fan and special hands are not included. <a href="https://c.tabletopia.com/games/old-hong-kong-mahjong/rules/mahjong-rules/en" target="_blank" rel="noopener">Hong Kong Mahjong rules</a></p></div>
     </details>
   </main>
   <script type="module">
     import { SIDE_NAMES, wallOrder, breakIndex, consumedIndices, dealSequence } from './wall.js?v=gameplay-1';
     import { isFlower, sortTiles, canWin, chowOptions, chooseDiscard, handHints, shanten, waitingTiles, winningShape } from './game.js?v=progress-1';
+    let language = localStorage.getItem('mahjong-language') === 'en' ? 'en' : 'ko';
+    const L = (ko, en) => language === 'en' ? en : ko;
+    document.documentElement.lang = language;
     const host = document.getElementById('scene');
     const status = document.getElementById('status');
     const playersEl = document.getElementById('players');
@@ -134,7 +151,7 @@
       THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm');
       ({ OrbitControls } = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js/+esm'));
     } catch (error) {
-      status.textContent = 'Three.js를 불러오지 못했습니다. 인터넷 연결 후 다시 열어주세요.';
+      status.textContent = L('Three.js를 불러오지 못했습니다. 인터넷 연결 후 다시 열어주세요.', 'Could not load Three.js. Check your internet connection and reload.');
       throw error;
     }
 
@@ -214,7 +231,7 @@
     const seatBadges = SIDE_NAMES.map((name, side) => {
       const badge = document.createElement('div');
       badge.className = 'seat-badge';
-      badge.textContent = `${name} ${side === 0 ? '(나) ' : ''}0장`;
+      badge.textContent = `${name} ${side === 0 ? L('(나) ', '(You) ') : ''}${L('0장', '0 tiles')}`;
       host.appendChild(badge);
       return badge;
     });
@@ -309,27 +326,33 @@
     const matchBar = document.getElementById('matchBar');
     const challengeBar = document.getElementById('challengeBar');
     const discardViewer = document.getElementById('discardViewer');
-    const playerLabel = player => `${SIDE_NAMES[(player - (match?.dealer || 0) + 4) % 4]}${player === 0 ? '(나)' : ''}`;
-    const scoreText = () => match.wins.map((wins, player) => `${player === 0 ? '나' : `상대${player}`} ${wins}승/${match.points[player]}점`).join(' · ');
+    const windName = (index, targetLanguage = language) => targetLanguage === 'en' ? ['East', 'South', 'West', 'North'][index] : SIDE_NAMES[index];
+    const meldName = type => language === 'en' ? ({ '치': 'Chow', '퐁': 'Pong', '깡': 'Kong', '암깡': 'Concealed kong' }[type] || type) : type;
+    const bilingual = (ko, en, selfDraw = false) => ({ ko, en, selfDraw });
+    const winByDiscard = (discarder, tile) => bilingual(`${playerLabel(discarder, 'ko')}의 버림패 ${tile}`, `on ${playerLabel(discarder, 'en')}'s discarded ${tile}`);
+    const playerLabel = (player, targetLanguage = language) => `${windName((player - (match?.dealer || 0) + 4) % 4, targetLanguage)}${player === 0 ? (targetLanguage === 'en' ? ' (You)' : '(나)') : ''}`;
+    const opponentName = player => player === 0 ? L('나', 'You') : L(`상대${player}`, `Opponent ${player}`);
+    const scoreText = () => match.wins.map((wins, player) => L(`${opponentName(player)} ${wins}승/${match.points[player]}점`, `${opponentName(player)} ${wins}W/${match.points[player]} pts`)).join(' · ');
     const MISSIONS = [
-      { name: '문 닫고 승부', description: '치·퐁 없이 화료', bonus: 60, check: ({ melds }) => melds.every(meld => meld.type === '암깡') },
-      { name: '속전속결', description: '내가 패를 8번 버리기 전에 화료', bonus: 50, check: ({ humanDiscards }) => humanDiscards < 8 },
-      { name: '과감한 공개', description: '공개 묶음 2개 이상으로 화료', bonus: 50, check: ({ melds }) => melds.filter(meld => meld.type !== '암깡').length >= 2 },
-      { name: '스스로 끝내기', description: '벽에서 직접 뽑아 화료', bonus: 60, check: (_, selfDraw) => selfDraw }
+      { id: 'closed', ko: ['문 닫고 승부', '치·퐁 없이 화료'], en: ['Concealed Victory', 'Win without chow or pong'], bonus: 60, check: ({ melds }) => melds.every(meld => meld.type === '암깡') },
+      { id: 'speed', ko: ['속전속결', '내가 패를 8번 버리기 전에 화료'], en: ['Quick Finish', 'Win before your eighth discard'], bonus: 50, check: ({ humanDiscards }) => humanDiscards < 8 },
+      { id: 'open', ko: ['과감한 공개', '공개 묶음 2개 이상으로 화료'], en: ['Open Attack', 'Win with at least two open groups'], bonus: 50, check: ({ melds }) => melds.filter(meld => meld.type !== '암깡').length >= 2 },
+      { id: 'self', ko: ['스스로 끝내기', '벽에서 직접 뽑아 화료'], en: ['Self Draw', 'Win with a tile drawn from the wall'], bonus: 60, check: (_, selfDraw) => selfDraw }
     ];
     function threatLevel(player) {
       if (!game || player === 0) return null;
       const distance = shanten(game.hands[player], game.melds[player].length);
-      return distance <= 0 ? { label: '🔥 화료 직전', hot: true } : distance === 1 ? { label: '⚠️ 위험', hot: true } : { label: '준비 중', hot: false };
+      return distance <= 0 ? { label: L('🔥 화료 직전', '🔥 Ready to win'), hot: true } : distance === 1 ? { label: L('⚠️ 위험', '⚠️ Danger'), hot: true } : { label: L('준비 중', 'Building'), hot: false };
     }
     function renderChallenge() {
       challengeBar.hidden = !game;
       if (!game) return;
       const mission = game.mission;
-      const closedLost = mission.name === '문 닫고 승부' && game.melds[0].some(meld => meld.type !== '암깡');
+      const closedLost = mission.id === 'closed' && game.melds[0].some(meld => meld.type !== '암깡');
       challengeBar.replaceChildren();
       const summary = document.createElement('div');
-      summary.innerHTML = `🎯 <strong>${mission.name}</strong> · ${mission.description} · 성공 +${mission.bonus}점${closedLost ? ' · ❌ 공개해서 실패' : ''}`;
+      const [missionName, missionDescription] = language === 'en' ? mission.en : mission.ko;
+      summary.innerHTML = L(`🎯 <strong>${missionName}</strong> · ${missionDescription} · 성공 +${mission.bonus}점${closedLost ? ' · ❌ 공개해서 실패' : ''}`, `🎯 <strong>${missionName}</strong> · ${missionDescription} · +${mission.bonus} pts${closedLost ? ' · ❌ Failed by opening hand' : ''}`);
       challengeBar.appendChild(summary);
       const threats = document.createElement('div');
       threats.className = 'threats';
@@ -341,6 +364,27 @@
         threats.appendChild(badge);
       }
       challengeBar.appendChild(threats);
+    }
+    function applyLanguage() {
+      document.documentElement.lang = language;
+      document.title = L('3D 홍콩 마작 v0.8.0', '3D Hong Kong Mahjong v0.8.0');
+      document.getElementById('appTitle').textContent = L('3D 홍콩 마작', '3D Hong Kong Mahjong');
+      document.getElementById('appSubtitle').textContent = L('처음 배우는 4판 대국', 'A four-hand beginner match');
+      document.getElementById('languageSelect').setAttribute('aria-label', L('언어', 'Language'));
+      document.querySelector('.version').title = L('2026-09-23 배포', 'Deployed 2026-09-23');
+      document.getElementById('deal').textContent = L('새 게임', 'New Game');
+      document.getElementById('rotate').textContent = L('시점 회전', 'Rotate View');
+      document.getElementById('resetCam').textContent = L('카메라 복귀', 'Reset Camera');
+      document.getElementById('help').textContent = L('드래그: 시점 회전 · 휠/핀치: 확대/축소 · 가운데 최근 버림패를 누르면 전체 버림패가 보입니다. 상대 패는 뒷면만 표시합니다.', 'Drag: rotate · Wheel/pinch: zoom · Tap the latest discard in the center to see discard history. Opponent hands show backs only.');
+      drawButton.textContent = L('패 뽑기', 'Draw Tile');
+      winButton.textContent = L('화료', 'Win');
+      if (!game) {
+        discardButton.textContent = L('선택한 패 버리기', 'Discard Selected Tile');
+        kongButton.textContent = L('암깡', 'Concealed Kong');
+        matchBar.textContent = L('새 게임을 눌러 4판 대국을 시작하세요.', 'Press New Game to start a four-hand match.');
+        status.textContent = L('3D 테이블 준비됨\n새 게임을 눌러 시작하세요.', '3D table ready\nPress New Game to begin.');
+        renderHands([[], [], [], []]);
+      } else renderGame();
     }
     function visibleCopies(tile) {
       let seen = game.hands[0].filter(value => value === tile).length;
@@ -361,9 +405,9 @@
     function renderDiscardViewer() {
       discardViewer.hidden = !game?.lastDiscard;
       if (discardViewer.hidden) return;
-      document.getElementById('latestDiscardPlayer').textContent = `${playerLabel(game.lastDiscard.player)} 버림`;
+      document.getElementById('latestDiscardPlayer').textContent = L(`${playerLabel(game.lastDiscard.player)} 버림`, `${playerLabel(game.lastDiscard.player)} discarded`);
       document.getElementById('latestDiscardTile').textContent = game.lastDiscard.tile;
-      document.getElementById('latestDiscardState').textContent = game.lastDiscard.claimed ? '가져감' : '';
+      document.getElementById('latestDiscardState').textContent = game.lastDiscard.claimed ? L('가져감', 'claimed') : '';
       const history = document.getElementById('discardHistory');
       history.replaceChildren();
       game.discards.forEach((pile, player) => {
@@ -405,22 +449,22 @@
       renderTableHands(hands);
       playersEl.replaceChildren();
       hands.forEach((hand, player) => {
-        seatBadges[player].textContent = `${playerLabel(player)} ${hand.length}장`;
+        seatBadges[player].textContent = L(`${playerLabel(player)} ${hand.length}장`, `${playerLabel(player)} ${hand.length} tiles`);
         const panel = document.createElement('section');
         panel.className = 'hands';
         const title = document.createElement('div');
         title.className = 'player-title';
         const name = document.createElement('b');
-        name.textContent = `${playerLabel(player)} 플레이어`;
+        name.textContent = L(`${playerLabel(player)} 플레이어`, `${playerLabel(player)} player`);
         const count = document.createElement('span');
         count.className = 'tile-count';
-        count.textContent = `${hand.length}장`;
+        count.textContent = L(`${hand.length}장`, `${hand.length} tiles`);
         title.append(name, count);
         panel.appendChild(title);
         if (player === 0 && hand.length) {
           const legend = document.createElement('div');
           legend.className = 'hand-legend';
-          for (const [kind, label] of [['set', '보라: 완성 묶음'], ['pair', '초록: 같은 패 짝'], ['run', '노랑: 연속 후보']]) {
+          for (const [kind, label] of [['set', L('보라: 완성 묶음', 'Purple: complete group')], ['pair', L('초록: 같은 패 짝', 'Green: identical pair')], ['run', L('노랑: 연속 후보', 'Yellow: sequence candidate')]]) {
             const item = document.createElement('span');
             item.className = kind;
             item.textContent = label;
@@ -439,17 +483,17 @@
           if (player === 0) tile.type = 'button';
           tile.className = 'tile2d' + (shown ? (label === '中' ? ' red' : label === '發' ? ' green' : '') : ' back') + (player === 0 ? ` hint-${hints[index]}` : '') + (player === 0 && game?.drawnIndex === index ? ' drawn' : '') + (player === 0 && game?.selected === index ? ' selected' : '') + (choices?.get(label)?.distance === bestDistance ? ' best' : '');
           if (shown) tile.textContent = label;
-          else tile.setAttribute('aria-label', '숨긴 패');
+          else tile.setAttribute('aria-label', L('숨긴 패', 'Hidden tile'));
           if (player === 0) tile.addEventListener('click', () => {
             if (!game || game.phase !== 'discard' || game.current !== 0) return;
             game.selected = index;
             renderGame();
           });
-          if (player === 0) tile.title = hints[index] === 'set' ? '완성된 묶음의 일부' : hints[index] === 'pair' ? '같은 패 짝' : hints[index] === 'run' ? '연속패 후보' : '현재 연결이 적은 패';
+          if (player === 0) tile.title = hints[index] === 'set' ? L('완성된 묶음의 일부', 'Part of a complete group') : hints[index] === 'pair' ? L('같은 패 짝', 'Identical pair') : hints[index] === 'run' ? L('연속패 후보', 'Sequence candidate') : L('현재 연결이 적은 패', 'Weakly connected tile');
           if (choices) {
             const badge = document.createElement('span');
             badge.className = 'distance';
-            badge.textContent = choices.get(label).distance === 0 ? '대기' : `${choices.get(label).distance}↓`;
+            badge.textContent = choices.get(label).distance === 0 ? L('대기', 'READY') : `${choices.get(label).distance}↓`;
             tile.appendChild(badge);
           }
           row.appendChild(tile);
@@ -461,29 +505,30 @@
           if (choices) {
             const selected = game.selected === null ? null : choices.get(hand[game.selected]);
             const best = [...choices.values()].filter(choice => choice.distance === bestDistance);
-            progress.textContent = `버린 뒤 최단 ${bestDistance === 0 ? '대기' : `${bestDistance}장 거리`} · 권장 ${[...choices].filter(([, choice]) => choice.distance === bestDistance).map(([tile]) => tile).join(' · ')}`;
-            if (selected) progress.textContent += `\n선택한 ${hand[game.selected]} 버리기 → ${selected.distance === 0 ? '대기' : `${selected.distance}장 거리`}${selected.waits.length ? ` · 대기패 ${selected.waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ')}` : ''}`;
+            const recommended = [...choices].filter(([, choice]) => choice.distance === bestDistance).map(([tile]) => tile).join(' · ');
+            progress.textContent = L(`버린 뒤 최단 ${bestDistance === 0 ? '대기' : `${bestDistance}장 거리`} · 권장 ${recommended}`, `Best after discard: ${bestDistance === 0 ? 'Ready' : `${bestDistance} away`} · Suggested ${recommended}`);
+            if (selected) progress.textContent += L(`\n선택한 ${hand[game.selected]} 버리기 → ${selected.distance === 0 ? '대기' : `${selected.distance}장 거리`}${selected.waits.length ? ` · 대기패 ${selected.waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ')}` : ''}`, `\nDiscard ${hand[game.selected]} → ${selected.distance === 0 ? 'Ready' : `${selected.distance} away`}${selected.waits.length ? ` · Winning tiles ${selected.waits.map(tile => `${tile}(${visibleCopies(tile)} left)`).join(' · ')}` : ''}`);
           } else if (hand.length % 3 === 1) {
             const distance = shanten(hand, game.melds[0].length);
             const waits = waitingTiles(hand, game.melds[0].length);
-            progress.textContent = distance === 0 ? `대기패: ${waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ') || '남은 패 없음'}` : `화료까지 ${distance}장 거리`;
+            progress.textContent = distance === 0 ? L(`대기패: ${waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ') || '남은 패 없음'}`, `Winning tiles: ${waits.map(tile => `${tile}(${visibleCopies(tile)} left)`).join(' · ') || 'none left'}`) : L(`화료까지 ${distance}장 거리`, `${distance} away from winning`);
           }
           if (progress.textContent) panel.appendChild(progress);
         }
         if (game) {
           const flowers = document.createElement('div');
           flowers.className = 'flowers';
-          flowers.textContent = `꽃·계절: ${game.flowers[player].join(' ') || '없음'}`;
+          flowers.textContent = L(`꽃·계절: ${game.flowers[player].join(' ') || '없음'}`, `Flowers/seasons: ${game.flowers[player].join(' ') || 'none'}`);
           panel.appendChild(flowers);
           if (game.melds[player].length) {
             const melds = document.createElement('div');
             melds.className = 'melds';
-            melds.textContent = `공개 묶음: ${game.melds[player].map(meld => `${meld.type}(${meld.tiles.join(' ')})`).join(' · ')}`;
+            melds.textContent = L(`공개 묶음: ${game.melds[player].map(meld => `${meld.type}(${meld.tiles.join(' ')})`).join(' · ')}`, `Open groups: ${game.melds[player].map(meld => `${meldName(meld.type)}(${meld.tiles.join(' ')})`).join(' · ')}`);
             panel.appendChild(melds);
           }
           const discards = document.createElement('div');
           discards.className = 'discards';
-          discards.textContent = '버린 패: ';
+          discards.textContent = L('버린 패: ', 'Discards: ');
           game.discards[player].forEach(label => {
             const chip = document.createElement('span');
             chip.className = 'smalltile';
@@ -500,42 +545,44 @@
       if (!game) return;
       renderDiscards(game.discards);
       renderDiscardViewer();
-      status.textContent = `${game.message}\n벽 ${remaining()}장 남음`;
-      matchBar.textContent = `${match.hand}/4판 · 동: ${playerLabel(match.dealer)} · ${scoreText()}`;
+      status.textContent = `${game.message[language]}\n${L(`벽 ${remaining()}장 남음`, `${remaining()} wall tiles left`)}`;
+      matchBar.textContent = L(`${match.hand}/4판 · 동: ${playerLabel(match.dealer)} · ${scoreText()}`, `Hand ${match.hand}/4 · East: ${playerLabel(match.dealer)} · ${scoreText()}`);
       renderChallenge();
       result.hidden = game.phase !== 'done';
       result.classList.toggle('victory', game.phase === 'done' && game.winner === 0);
       if (game.phase === 'done') {
-        document.getElementById('resultTitle').textContent = game.winner === 0 ? '🎉 화료! 이겼습니다' : match.hand === 4 ? '4판 대국 종료' : (game.winner === null ? '유국' : `${playerLabel(game.winner)} 화료!`);
-        const handResult = game.winner === null ? '벽의 패를 모두 사용했습니다.' : `${playerLabel(game.winner)} 플레이어가 ${game.winMethod}로 이겼습니다. 승자의 패는 아래에 공개됩니다.`;
+        document.getElementById('resultTitle').textContent = game.winner === 0 ? L('🎉 화료! 이겼습니다', '🎉 Mahjong! You win') : match.hand === 4 ? L('4판 대국 종료', 'Match complete') : (game.winner === null ? L('유국', 'Draw') : L(`${playerLabel(game.winner)} 화료!`, `${playerLabel(game.winner)} wins!`));
+        const handResult = game.winner === null ? L('벽의 패를 모두 사용했습니다.', 'The wall is empty.') : L(`${playerLabel(game.winner)} 플레이어가 ${game.winMethod.ko}로 이겼습니다. 승자의 패는 아래에 공개됩니다.`, `${playerLabel(game.winner)} won ${game.winMethod.en}. The winning hand is revealed below.`);
         const leaders = match.points.map((points, player) => ({ points, player })).filter(entry => entry.points === Math.max(...match.points));
         document.getElementById('resultText').textContent = match.hand === 4
-          ? `${handResult} 최종 최고점: ${leaders.map(entry => entry.player === 0 ? '나' : `상대${entry.player}`).join(', ')}.`
+          ? L(`${handResult} 최종 최고점: ${leaders.map(entry => opponentName(entry.player)).join(', ')}.`, `${handResult} Top score: ${leaders.map(entry => opponentName(entry.player)).join(', ')}.`)
           : handResult;
         const detail = document.getElementById('winDetail');
         detail.hidden = game.winner === null;
         if (game.winner !== null) {
           const shape = winningShape(game.hands[game.winner], game.melds[game.winner].length);
-          detail.textContent = `공개 묶음: ${game.melds[game.winner].map(meld => meld.tiles.join('·')).join(' / ') || '없음'}\n손패 묶음: ${shape?.melds.map(meld => meld.join('·')).join(' / ') || '없음'}\n짝: ${shape?.pair.join('·') || '확인 불가'}\n${game.winner === 0 ? `미션: ${game.missionSucceeded ? `성공 +${game.mission.bonus}점` : '실패'}\n` : ''}이번 판 +${game.awardedPoints}점 (${game.pointBreakdown})`;
+          const openGroups = game.melds[game.winner].map(meld => meld.tiles.join('·')).join(' / ');
+          const handGroups = shape?.melds.map(meld => meld.join('·')).join(' / ');
+          detail.textContent = L(`공개 묶음: ${openGroups || '없음'}\n손패 묶음: ${handGroups || '없음'}\n짝: ${shape?.pair.join('·') || '확인 불가'}\n${game.winner === 0 ? `미션: ${game.missionSucceeded ? `성공 +${game.mission.bonus}점` : '실패'}\n` : ''}이번 판 +${game.awardedPoints}점 (${game.pointBreakdown.ko})`, `Open groups: ${openGroups || 'none'}\nConcealed groups: ${handGroups || 'none'}\nPair: ${shape?.pair.join('·') || 'unknown'}\n${game.winner === 0 ? `Mission: ${game.missionSucceeded ? `Complete +${game.mission.bonus} pts` : 'Failed'}\n` : ''}This hand +${game.awardedPoints} pts (${game.pointBreakdown.en})`);
         }
         const resultScore = document.getElementById('resultScore');
         resultScore.replaceChildren();
         match.wins.forEach((wins, player) => {
           const badge = document.createElement('span');
-          badge.textContent = `${player === 0 ? '나' : `상대${player}`} ${wins}승 · ${match.points[player]}점`;
+          badge.textContent = L(`${opponentName(player)} ${wins}승 · ${match.points[player]}점`, `${opponentName(player)} ${wins}W · ${match.points[player]} pts`);
           resultScore.appendChild(badge);
         });
-        document.getElementById('nextHand').textContent = match.hand === 4 ? '새 대국 시작' : '다음 판 시작';
+        document.getElementById('nextHand').textContent = match.hand === 4 ? L('새 대국 시작', 'Start New Match') : L('다음 판 시작', 'Start Next Hand');
       }
       drawButton.disabled = game.phase !== 'draw' || game.current !== 0;
       discardButton.disabled = game.phase !== 'discard' || game.current !== 0 || game.selected === null;
       const selectedHint = game.selected === null ? 'none' : handHints(game.hands[0])[game.selected];
-      discardButton.textContent = selectedHint === 'set' ? '완성 묶음 패 버리기 ⚠' : selectedHint === 'pair' ? '짝 패 버리기 ⚠' : selectedHint === 'run' ? '연속 후보 버리기' : '선택한 패 버리기';
+      discardButton.textContent = selectedHint === 'set' ? L('완성 묶음 패 버리기 ⚠', 'Discard Group Tile ⚠') : selectedHint === 'pair' ? L('짝 패 버리기 ⚠', 'Discard Pair Tile ⚠') : selectedHint === 'run' ? L('연속 후보 버리기', 'Discard Sequence Tile') : L('선택한 패 버리기', 'Discard Selected Tile');
       discardButton.classList.toggle('caution', selectedHint !== 'none');
       winButton.disabled = !(game.phase === 'discard' && game.current === 0 && canWin(game.hands[0], game.melds[0].length));
       const kong = game.phase === 'discard' && game.current === 0 && concealedKong(0);
       kongButton.disabled = !kong || remaining() === 0;
-      kongButton.textContent = kong ? `암깡 ${kong}` : '암깡';
+      kongButton.textContent = kong ? L(`암깡 ${kong}`, `Concealed Kong ${kong}`) : L('암깡', 'Concealed Kong');
       claimActions.replaceChildren();
       if (game.phase !== 'claim') return;
       const offer = (label, action) => {
@@ -546,12 +593,12 @@
         claimActions.appendChild(button);
       };
       const { tile, options } = game.pending;
-      if (options.win) offer(`화료 ${tile}`, () => finishWin(0, `${playerLabel(game.pending.discarder)}의 버림패 ${tile}`));
-      const openCost = game.mission.name === '문 닫고 승부' ? ' · 미션 포기' : '';
-      if (options.kong) offer(`깡 ${tile}${openCost}`, () => humanClaim('깡', [tile, tile, tile]));
-      if (options.pong) offer(`퐁 ${tile}${openCost}`, () => humanClaim('퐁', [tile, tile]));
-      options.chows.forEach(needed => offer(`치 ${[...needed, tile].join(' ')}${openCost}`, () => humanClaim('치', needed)));
-      offer('넘기기', passClaim);
+      if (options.win) offer(L(`화료 ${tile}`, `Win ${tile}`), () => finishWin(0, winByDiscard(game.pending.discarder, tile)));
+      const openCost = game.mission.id === 'closed' ? L(' · 미션 포기', ' · forfeit mission') : '';
+      if (options.kong) offer(`${L('깡', 'Kong')} ${tile}${openCost}`, () => humanClaim('깡', [tile, tile, tile]));
+      if (options.pong) offer(`${L('퐁', 'Pong')} ${tile}${openCost}`, () => humanClaim('퐁', [tile, tile]));
+      options.chows.forEach(needed => offer(`${L('치', 'Chow')} ${[...needed, tile].join(' ')}${openCost}`, () => humanClaim('치', needed)));
+      offer(L('넘기기', 'Pass'), passClaim);
     }
     function takeTile(player, fromBack = false) {
       while (game.front <= game.back) {
@@ -577,7 +624,7 @@
       }
       game.hands[player] = sortTiles(game.hands[player]);
       const shape = winningShape(game.hands[player], game.melds[player].length);
-      const selfDraw = !method.includes('버림패');
+      const selfDraw = method.selfDraw;
       const kongs = game.melds[player].filter(meld => meld.tiles.length === 4).length;
       const concealed = shape?.melds.length || 0;
       const missionSucceeded = player === 0 && game.mission.check(game, selfDraw);
@@ -585,21 +632,21 @@
       const points = 100 + (selfDraw ? 30 : 0) + concealed * 10 + kongs * 15 + game.flowers[player].length * 5 + missionBonus;
       game.awardedPoints = points;
       game.missionSucceeded = missionSucceeded;
-      game.pointBreakdown = `기본 100 + 직접 뽑기 ${selfDraw ? 30 : 0} + 손패 묶음 ${concealed * 10} + 깡 ${kongs * 15} + 꽃·계절 ${game.flowers[player].length * 5}${player === 0 ? ` + 미션 ${missionBonus}` : ''}`;
+      game.pointBreakdown = bilingual(`기본 100 + 직접 뽑기 ${selfDraw ? 30 : 0} + 손패 묶음 ${concealed * 10} + 깡 ${kongs * 15} + 꽃·계절 ${game.flowers[player].length * 5}${player === 0 ? ` + 미션 ${missionBonus}` : ''}`, `base 100 + self draw ${selfDraw ? 30 : 0} + concealed groups ${concealed * 10} + kong ${kongs * 15} + flowers/seasons ${game.flowers[player].length * 5}${player === 0 ? ` + mission ${missionBonus}` : ''}`);
       game.winner = player;
       game.winMethod = method;
       game.phase = 'done';
       game.pending = null;
       match.wins[player]++;
       match.points[player] += points;
-      game.message = `${playerLabel(player)} 화료! ${method}\n네 묶음과 한 쌍 완성`;
+      game.message = bilingual(`${playerLabel(player, 'ko')} 화료! ${method.ko}\n네 묶음과 한 쌍 완성`, `${playerLabel(player, 'en')} wins ${method.en}!\nFour groups and one pair complete`);
       renderGame();
       requestAnimationFrame(() => host.scrollIntoView({ behavior: 'smooth', block: 'center' }));
     }
     function finishDraw() {
       game.phase = 'done';
       match.draws++;
-      game.message = '유국 · 벽의 패를 모두 사용했습니다. 다음 판으로 이어가세요.';
+      game.message = bilingual('유국 · 벽의 패를 모두 사용했습니다. 다음 판으로 이어가세요.', 'Draw · The wall is empty. Continue to the next hand.');
       renderGame();
       requestAnimationFrame(() => host.scrollIntoView({ behavior: 'smooth', block: 'center' }));
     }
@@ -607,7 +654,7 @@
       if (remaining() === 0) return finishDraw();
       game.current = (discarder + 1) % 4;
       game.phase = 'draw';
-      game.message = `${playerLabel(game.current)} 차례 · ${game.current === 0 ? '패 뽑기를 누르세요' : '패를 뽑는 중…'}`;
+      game.message = bilingual(`${playerLabel(game.current, 'ko')} 차례 · ${game.current === 0 ? '패 뽑기를 누르세요' : '패를 뽑는 중…'}`, `${playerLabel(game.current, 'en')}'s turn · ${game.current === 0 ? 'Press Draw Tile' : 'Drawing…'}`);
       renderGame();
       if (game.current !== 0) schedule(aiTurn);
     }
@@ -630,8 +677,8 @@
         if (!replacement) return finishDraw();
         if (player === 0) highlightDrawn(replacement);
       }
-      if (canWin(game.hands[player], game.melds[player].length) && player !== 0) return finishWin(player, '보충패로 완성');
-      game.message = `${playerLabel(player)} ${type}! ${player === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`;
+      if (canWin(game.hands[player], game.melds[player].length) && player !== 0) return finishWin(player, bilingual('보충패로 완성', 'with a replacement tile', true));
+      game.message = bilingual(`${playerLabel(player, 'ko')} ${type}! ${player === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`, `${playerLabel(player, 'en')} ${({ '치': 'Chow', '퐁': 'Pong', '깡': 'Kong', '암깡': 'Concealed kong' }[type] || type)}! ${player === 0 ? 'Select a tile to discard' : 'Discarding…'}`);
       renderGame();
       if (player === 0 && type === '깡') showMyHand();
       if (player !== 0) schedule(aiDiscard);
@@ -672,7 +719,7 @@
         game.discards[discarder].pop();
         if (game.lastDiscard) game.lastDiscard.claimed = true;
         game.hands[winner].push(tile);
-        return finishWin(winner, `${playerLabel(discarder)}의 버림패 ${tile}`);
+        return finishWin(winner, winByDiscard(discarder, tile));
       }
       aiClaims(discarder, tile);
     }
@@ -690,7 +737,7 @@
         if (options.win || options.pong || options.kong || options.chows.length) {
           game.pending = { discarder, tile, options };
           game.phase = 'claim';
-          game.message = `${playerLabel(discarder)} 플레이어가 ${tile} 버림 · 가져오거나 넘기세요`;
+          game.message = bilingual(`${playerLabel(discarder, 'ko')} 플레이어가 ${tile} 버림 · 가져오거나 넘기세요`, `${playerLabel(discarder, 'en')} discarded ${tile} · Claim it or pass`);
           return renderGame();
         }
       }
@@ -703,7 +750,7 @@
       const [tile] = game.hands[player].splice(index, 1);
       game.discards[player].push(tile);
       game.lastDiscard = { player, tile, claimed: false };
-      game.message = `${playerLabel(player)} 플레이어가 ${tile} 버림`;
+      game.message = bilingual(`${playerLabel(player, 'ko')} 플레이어가 ${tile} 버림`, `${playerLabel(player, 'en')} discarded ${tile}`);
       game.phase = 'waiting';
       renderGame();
       schedule(() => resolveDiscard(player, tile));
@@ -713,16 +760,16 @@
       const player = game.current;
       const tile = takeTile(player);
       if (!tile) return finishDraw();
-      if (canWin(game.hands[player], game.melds[player].length)) return finishWin(player, `벽에서 ${tile} 뽑음`);
+      if (canWin(game.hands[player], game.melds[player].length)) return finishWin(player, bilingual(`벽에서 ${tile} 뽑음`, `by drawing ${tile} from the wall`, true));
       const kong = concealedKong(player);
       if (kong && remaining() > 0) {
         removeTiles(player, [kong, kong, kong, kong]);
         game.melds[player].push({ type: '암깡', tiles: [kong, kong, kong, kong] });
         if (!takeTile(player, true)) return finishDraw();
-        if (canWin(game.hands[player], game.melds[player].length)) return finishWin(player, '암깡 보충패로 완성');
+        if (canWin(game.hands[player], game.melds[player].length)) return finishWin(player, bilingual('암깡 보충패로 완성', 'with a concealed-kong replacement tile', true));
       }
       game.phase = 'discard';
-      game.message = `${playerLabel(player)}가 패를 뽑았습니다`;
+      game.message = bilingual(`${playerLabel(player, 'ko')}가 패를 뽑았습니다`, `${playerLabel(player, 'en')} drew a tile`);
       renderGame();
       schedule(aiDiscard);
     }
@@ -737,7 +784,7 @@
       game = {
         shuffled, order: consumedIndices(start, 144), front: 53, back: 143,
         hands: [[], [], [], []], melds: [[], [], [], []], flowers: [[], [], [], []], discards: [[], [], [], []],
-        current: match.dealer, phase: 'discard', selected: null, drawnIndex: null, lastDiscard: null, pending: null, winner: null, message: '',
+        current: match.dealer, phase: 'discard', selected: null, drawnIndex: null, lastDiscard: null, pending: null, winner: null, message: bilingual('', ''),
         mission: MISSIONS[(match.hand - 1) % MISSIONS.length], humanDiscards: 0, missionSucceeded: false
       };
       discardViewer.open = false;
@@ -755,13 +802,20 @@
         game.hands[player] = sortTiles(game.hands[player]);
       }
       const origin = positions[start];
-      game.message = `${match.hand}/4판 배패 · 주사위 ${dice[0]}+${dice[1]}=${total}\n${playerLabel(origin.side)}쪽 벽 ${origin.stack + 1}번째 쌍에서 개벽\n${playerLabel(match.dealer)} 차례 · ${match.dealer === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`;
+      game.message = bilingual(`${match.hand}/4판 배패 · 주사위 ${dice[0]}+${dice[1]}=${total}\n${playerLabel(origin.side, 'ko')}쪽 벽 ${origin.stack + 1}번째 쌍에서 개벽\n${playerLabel(match.dealer, 'ko')} 차례 · ${match.dealer === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`, `Hand ${match.hand}/4 dealt · Dice ${dice[0]}+${dice[1]}=${total}\nWall opened at pair ${origin.stack + 1} on the ${playerLabel(origin.side, 'en')} side\n${playerLabel(match.dealer, 'en')}'s turn · ${match.dealer === 0 ? 'Select a tile to discard' : 'Discarding…'}`);
       renderGame();
       if (match.dealer !== 0) schedule(aiDiscard);
     }
     document.getElementById('deal').addEventListener('click', () => {
       match = { hand: 1, dealer: 0, wins: [0, 0, 0, 0], points: [0, 0, 0, 0], draws: 0 };
       deal();
+    });
+    const languageSelect = document.getElementById('languageSelect');
+    languageSelect.value = language;
+    languageSelect.addEventListener('change', () => {
+      language = languageSelect.value;
+      localStorage.setItem('mahjong-language', language);
+      applyLanguage();
     });
     document.getElementById('nextHand').addEventListener('click', () => {
       if (!game || game.phase !== 'done') return;
@@ -775,7 +829,7 @@
       if (!tile) return finishDraw();
       highlightDrawn(tile);
       game.phase = 'discard';
-      game.message = `${tile} 뽑음 · 패를 선택해 버리세요`;
+      game.message = bilingual(`${tile} 뽑음 · 패를 선택해 버리세요`, `Drew ${tile} · Select a tile to discard`);
       renderGame();
       showMyHand();
     });
@@ -789,13 +843,13 @@
       clearTimeout(highlightTimer);
       game.drawnIndex = null;
       game.phase = 'waiting';
-      game.message = `${playerLabel(0)} 플레이어가 ${tile} 버림 · 상대 차례 진행 중…`;
+      game.message = bilingual(`${playerLabel(0, 'ko')} 플레이어가 ${tile} 버림 · 상대 차례 진행 중…`, `${playerLabel(0, 'en')} discarded ${tile} · Opponents are playing…`);
       renderGame();
       requestAnimationFrame(() => host.scrollIntoView({ behavior: 'smooth', block: 'center' }));
       schedule(() => resolveDiscard(0, tile));
     });
     winButton.addEventListener('click', () => {
-      if (game?.phase === 'discard' && game.current === 0 && canWin(game.hands[0], game.melds[0].length)) finishWin(0, '직접 뽑아 완성');
+      if (game?.phase === 'discard' && game.current === 0 && canWin(game.hands[0], game.melds[0].length)) finishWin(0, bilingual('직접 뽑아 완성', 'by self draw', true));
     });
     kongButton.addEventListener('click', () => {
       if (!game || game.phase !== 'discard' || game.current !== 0 || remaining() === 0) return;
@@ -807,7 +861,7 @@
       if (!replacement) return finishDraw();
       game.selected = null;
       highlightDrawn(replacement);
-      game.message = `${tile} 암깡 · 보충패를 가져왔습니다`;
+      game.message = bilingual(`${tile} 암깡 · 보충패를 가져왔습니다`, `Concealed kong ${tile} · Drew a replacement tile`);
       renderGame();
       showMyHand();
     });
@@ -832,8 +886,7 @@
     resize();
     function loop() { controls.update(); positionSeatBadges(); renderer.render(scene, camera); requestAnimationFrame(loop); }
     loop();
-    renderHands([[], [], [], []]);
-    status.textContent = '3D 테이블 준비됨\n새 게임을 눌러 시작하세요.';
+    applyLanguage();
   </script>
 </body>
 </html>
