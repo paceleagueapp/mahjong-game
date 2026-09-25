@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3D 홍콩 마작 v0.9.0</title>
+  <title>3D 홍콩 마작 v0.9.1</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif; }
@@ -96,7 +96,7 @@
 <body>
   <main class="app">
     <div class="bar">
-      <div><div class="title-line"><b id="appTitle">3D 홍콩 마작</b><span class="version" title="2026-09-25 배포">v0.9.0</span></div><div id="appSubtitle" style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
+      <div><div class="title-line"><b id="appTitle">3D 홍콩 마작</b><span class="version" title="2026-09-25 배포">v0.9.1</span></div><div id="appSubtitle" style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
       <div class="actions"><select id="languageSelect" class="language-select" aria-label="언어"><option value="ko">한국어</option><option value="en">English</option></select><button id="deal">새 게임</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
     <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div><details id="discardViewer" class="discard-viewer" hidden><summary><span id="latestDiscardPlayer"></span><strong id="latestDiscardTile"></strong><span id="latestDiscardState"></span></summary><div id="discardHistory" class="discard-history"></div></details><section id="result" class="result" hidden aria-live="assertive"><h2 id="resultTitle"></h2><p id="resultText"></p><div id="winDetail" class="win-detail" hidden></div><p id="resultScore" class="score"></p><button id="nextHand">다음 판</button></section></div>
@@ -117,7 +117,7 @@
         <li><b>새 게임</b>을 누르면 첫 판은 동(나) 14장으로 시작합니다. 동은 패를 하나 선택해 버립니다. 한 판이 끝나면 <b>다음 판</b>으로 이어지고 동 자리는 순서대로 바뀝니다.</li>
         <li>그다음부터는 자기 차례에 <b>패 뽑기</b>를 누르고, 손패 하나를 눌러 선택한 뒤 <b>선택한 패 버리기</b>를 누릅니다. 상대 차례는 자동으로 진행됩니다.</li>
         <li><b>하늘색</b>은 방금 뽑은 패입니다. 손패의 <b>보라색</b>은 완성된 묶음, <b>초록색</b>은 같은 패 짝, <b>노란색</b>은 연속패 후보입니다. 색은 버릴 패를 고르는 참고 표시이며 화료를 보장하지 않습니다.</li>
-        <li>패 아래의 숫자는 그 패를 버린 뒤 화료까지 남은 거리입니다. <b>0이면 대기</b>이며, 어떤 패를 뽑거나 가져오면 이기는지 표시됩니다. 작은 숫자가 유리하지만 상대가 이미 버린 패도 살펴보세요.</li>
+        <li>패 아래의 숫자는 그 패를 버린 뒤 <b>대기까지 남은 단계</b>입니다. <b>0이면 대기</b>이며 다음 유효패로 화료할 수 있습니다. 1은 바로 화료가 아니라, 한 번 개선하면 대기에 가까워진다는 뜻입니다.</li>
         <li>목표는 <b>세 장짜리 묶음 네 개와 같은 패 두 장</b>입니다. 묶음은 같은 패 세 장(퐁) 또는 같은 종류의 연속 숫자 세 장(치)입니다. 네 장의 같은 패(깡)는 묶음 하나로 세고 보충패를 뽑습니다.</li>
         <li>상대가 버린 패로 완성하면 <b>화료</b>를 누를 수 있습니다. 퐁·깡은 누구의 버림패든, 치는 바로 앞 플레이어의 버림패만 가져올 수 있습니다. 가져온 묶음은 공개하고 패 한 장을 버립니다.</li>
         <li>꽃·계절패는 즉시 공개하고 벽 뒤쪽에서 보충패를 가져옵니다. 벽이 떨어지면 유국입니다.</li>
@@ -129,7 +129,7 @@
         <li>Press <b>New Game</b> to begin. East starts with 14 tiles and discards one. After each hand, press <b>Next Hand</b>; the East seat rotates.</li>
         <li>On your turn, press <b>Draw Tile</b>, select a tile, then press <b>Discard Selected Tile</b>. Opponents play automatically.</li>
         <li><b>Cyan</b> marks the tile just drawn. <b>Purple</b> marks complete groups, <b>green</b> pairs, and <b>yellow</b> sequence candidates. These are hints, not guaranteed wins.</li>
-        <li>The number on a tile shows the distance to a winning hand after discarding it. <b>Ready</b> means one tile completes the hand and shows the winning tiles.</li>
+        <li>The number on a tile shows the steps remaining before <b>Ready</b> after discarding it. Ready means the next matching tile can win. A value of 1 is one improvement from Ready, not an immediate one-tile win.</li>
         <li>The goal is <b>four groups of three plus one identical pair</b>. A group is a pong, chow, or kong.</li>
         <li>You may win using any opponent's latest discard. Pong and kong may claim any discard; chow may claim only from the player immediately before you.</li>
         <li>Flower and season tiles are revealed immediately and replaced from the back of the wall. An empty wall ends the hand in a draw.</li>
@@ -392,7 +392,7 @@
     }
     function applyLanguage() {
       document.documentElement.lang = language;
-      document.title = L('3D 홍콩 마작 v0.9.0', '3D Hong Kong Mahjong v0.9.0');
+      document.title = L('3D 홍콩 마작 v0.9.1', '3D Hong Kong Mahjong v0.9.1');
       document.getElementById('appTitle').textContent = L('3D 홍콩 마작', '3D Hong Kong Mahjong');
       document.getElementById('appSubtitle').textContent = L('처음 배우는 4판 대국', 'A four-hand beginner match');
       document.getElementById('languageSelect').setAttribute('aria-label', L('언어', 'Language'));
@@ -531,12 +531,12 @@
             const selected = game.selected === null ? null : choices.get(hand[game.selected]);
             const best = [...choices.values()].filter(choice => choice.distance === bestDistance);
             const recommended = [...choices].filter(([, choice]) => choice.distance === bestDistance).map(([tile]) => tile).join(' · ');
-            progress.textContent = L(`버린 뒤 최단 ${bestDistance === 0 ? '대기' : `${bestDistance}장 거리`} · 권장 ${recommended}`, `Best after discard: ${bestDistance === 0 ? 'Ready' : `${bestDistance} away`} · Suggested ${recommended}`);
-            if (selected) progress.textContent += L(`\n선택한 ${hand[game.selected]} 버리기 → ${selected.distance === 0 ? '대기' : `${selected.distance}장 거리`}${selected.waits.length ? ` · 대기패 ${selected.waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ')}` : ''}`, `\nDiscard ${hand[game.selected]} → ${selected.distance === 0 ? 'Ready' : `${selected.distance} away`}${selected.waits.length ? ` · Winning tiles ${selected.waits.map(tile => `${tile}(${visibleCopies(tile)} left)`).join(' · ')}` : ''}`);
+            progress.textContent = L(`버린 뒤 ${bestDistance === 0 ? '대기' : `대기까지 최단 ${bestDistance}단계`} · 권장 ${recommended}`, `After discard: ${bestDistance === 0 ? 'Ready' : `${bestDistance} step${bestDistance === 1 ? '' : 's'} from Ready`} · Suggested ${recommended}`);
+            if (selected) progress.textContent += L(`\n선택한 ${hand[game.selected]} 버리기 → ${selected.distance === 0 ? '대기' : `대기까지 ${selected.distance}단계`}${selected.waits.length ? ` · 대기패 ${selected.waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ')}` : ''}`, `\nDiscard ${hand[game.selected]} → ${selected.distance === 0 ? 'Ready' : `${selected.distance} step${selected.distance === 1 ? '' : 's'} from Ready`}${selected.waits.length ? ` · Winning tiles ${selected.waits.map(tile => `${tile}(${visibleCopies(tile)} left)`).join(' · ')}` : ''}`);
           } else if (hand.length % 3 === 1) {
             const distance = shanten(hand, game.melds[0].length);
             const waits = waitingTiles(hand, game.melds[0].length);
-            progress.textContent = distance === 0 ? L(`대기패: ${waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ') || '남은 패 없음'}`, `Winning tiles: ${waits.map(tile => `${tile}(${visibleCopies(tile)} left)`).join(' · ') || 'none left'}`) : L(`화료까지 ${distance}장 거리`, `${distance} away from winning`);
+            progress.textContent = distance === 0 ? L(`대기패: ${waits.map(tile => `${tile}(${visibleCopies(tile)}장)`).join(' · ') || '남은 패 없음'}`, `Winning tiles: ${waits.map(tile => `${tile}(${visibleCopies(tile)} left)`).join(' · ') || 'none left'}`) : L(`대기까지 ${distance}단계`, `${distance} step${distance === 1 ? '' : 's'} from Ready`);
           }
           if (progress.textContent) panel.appendChild(progress);
         }
