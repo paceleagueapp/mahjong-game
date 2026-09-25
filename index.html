@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3D 홍콩 마작 v0.8.0</title>
+  <title>3D 홍콩 마작 v0.9.0</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif; }
@@ -96,7 +96,7 @@
 <body>
   <main class="app">
     <div class="bar">
-      <div><div class="title-line"><b id="appTitle">3D 홍콩 마작</b><span class="version" title="2026-09-23 배포">v0.8.0</span></div><div id="appSubtitle" style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
+      <div><div class="title-line"><b id="appTitle">3D 홍콩 마작</b><span class="version" title="2026-09-25 배포">v0.9.0</span></div><div id="appSubtitle" style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
       <div class="actions"><select id="languageSelect" class="language-select" aria-label="언어"><option value="ko">한국어</option><option value="en">English</option></select><button id="deal">새 게임</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
     <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div><details id="discardViewer" class="discard-viewer" hidden><summary><span id="latestDiscardPlayer"></span><strong id="latestDiscardTile"></strong><span id="latestDiscardState"></span></summary><div id="discardHistory" class="discard-history"></div></details><section id="result" class="result" hidden aria-live="assertive"><h2 id="resultTitle"></h2><p id="resultText"></p><div id="winDetail" class="win-detail" hidden></div><p id="resultScore" class="score"></p><button id="nextHand">다음 판</button></section></div>
@@ -228,6 +228,22 @@
       scene.add(group);
       return group;
     });
+    const dealTweens = [];
+    function updateDealTweens(now) {
+      for (let index = dealTweens.length - 1; index >= 0; index--) {
+        const tween = dealTweens[index];
+        const progress = Math.min(1, (now - tween.started) / tween.duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        tween.tile.position.lerpVectors(tween.from, tween.to, eased);
+        tween.tile.position.y += Math.sin(progress * Math.PI) * .9;
+        tween.tile.rotation.z = (1 - eased) * tween.spin;
+        if (progress >= 1) {
+          tween.tile.position.copy(tween.to);
+          tween.tile.rotation.z = 0;
+          dealTweens.splice(index, 1);
+        }
+      }
+    }
     const seatBadges = SIDE_NAMES.map((name, side) => {
       const badge = document.createElement('div');
       badge.className = 'seat-badge';
@@ -254,10 +270,17 @@
           const back = new THREE.Mesh(new THREE.BoxGeometry(.32, .57, .02), green);
           back.position.set(0, .31, -.09);
           tile.add(back);
-          tile.position.x = (index - (hands[side].length - 1) / 2) * .4;
+          const target = new THREE.Vector3((index - (hands[side].length - 1) / 2) * .4, 0, 0);
+          const sourceWorld = game?.dealingMoves?.get(`${side}-${index}`);
+          if (sourceWorld) {
+            const from = group.worldToLocal(sourceWorld.clone());
+            tile.position.copy(from);
+            dealTweens.push({ tile, from, to: target, started: performance.now(), duration: 150, spin: side % 2 ? -.55 : .55 });
+          } else tile.position.copy(target);
           group.add(tile);
         });
       });
+      if (game?.dealingMoves) game.dealingMoves = null;
     }
     const discardGroups = SIDE_NAMES.map((_, side) => {
       const group = new THREE.Group();
@@ -320,7 +343,8 @@
     const winButton = document.getElementById('win');
     const kongButton = document.getElementById('kong');
     const claimActions = document.getElementById('claimActions');
-    let game = null, match = null, aiTimer = null, highlightTimer = null;
+    let game = null, match = null, aiTimer = null, highlightTimer = null, dealRun = 0;
+    const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
     const result = document.getElementById('result');
     document.body.appendChild(result);
     const matchBar = document.getElementById('matchBar');
@@ -354,6 +378,7 @@
       const [missionName, missionDescription] = language === 'en' ? mission.en : mission.ko;
       summary.innerHTML = L(`🎯 <strong>${missionName}</strong> · ${missionDescription} · 성공 +${mission.bonus}점${closedLost ? ' · ❌ 공개해서 실패' : ''}`, `🎯 <strong>${missionName}</strong> · ${missionDescription} · +${mission.bonus} pts${closedLost ? ' · ❌ Failed by opening hand' : ''}`);
       challengeBar.appendChild(summary);
+      if (game.phase === 'dealing') return;
       const threats = document.createElement('div');
       threats.className = 'threats';
       for (let player = 1; player < 4; player++) {
@@ -367,11 +392,11 @@
     }
     function applyLanguage() {
       document.documentElement.lang = language;
-      document.title = L('3D 홍콩 마작 v0.8.0', '3D Hong Kong Mahjong v0.8.0');
+      document.title = L('3D 홍콩 마작 v0.9.0', '3D Hong Kong Mahjong v0.9.0');
       document.getElementById('appTitle').textContent = L('3D 홍콩 마작', '3D Hong Kong Mahjong');
       document.getElementById('appSubtitle').textContent = L('처음 배우는 4판 대국', 'A four-hand beginner match');
       document.getElementById('languageSelect').setAttribute('aria-label', L('언어', 'Language'));
-      document.querySelector('.version').title = L('2026-09-23 배포', 'Deployed 2026-09-23');
+      document.querySelector('.version').title = L('2026-09-25 배포', 'Deployed 2026-09-25');
       document.getElementById('deal').textContent = L('새 게임', 'New Game');
       document.getElementById('rotate').textContent = L('시점 회전', 'Rotate View');
       document.getElementById('resetCam').textContent = L('카메라 복귀', 'Reset Camera');
@@ -499,7 +524,7 @@
           row.appendChild(tile);
         });
         panel.appendChild(row);
-        if (player === 0 && game && game.phase !== 'done') {
+        if (player === 0 && game && game.phase !== 'done' && game.phase !== 'dealing') {
           const progress = document.createElement('div');
           progress.className = 'progress';
           if (choices) {
@@ -773,9 +798,11 @@
       renderGame();
       schedule(aiDiscard);
     }
-    function deal() {
+    async function deal() {
+      const activeDeal = ++dealRun;
       clearTimeout(aiTimer);
       clearTimeout(highlightTimer);
+      dealTweens.length = 0;
       for (const mesh of wallMeshes) mesh.visible = true;
       const shuffled = shuffle([...tiles]);
       const dice = [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
@@ -784,14 +811,35 @@
       game = {
         shuffled, order: consumedIndices(start, 144), front: 53, back: 143,
         hands: [[], [], [], []], melds: [[], [], [], []], flowers: [[], [], [], []], discards: [[], [], [], []],
-        current: match.dealer, phase: 'discard', selected: null, drawnIndex: null, lastDiscard: null, pending: null, winner: null, message: bilingual('', ''),
+        current: match.dealer, phase: 'dealing', selected: null, drawnIndex: null, lastDiscard: null, pending: null, winner: null, message: bilingual('배패 준비 중…', 'Preparing the deal…'),
         mission: MISSIONS[(match.hand - 1) % MISSIONS.length], humanDiscards: 0, missionSucceeded: false
       };
       discardViewer.open = false;
-      dealSequence(start).forEach(({ index, player }) => {
-        wallMeshes[index].visible = false;
-        game.hands[(match.dealer + player) % 4].push(shuffled[index]);
-      });
+      renderGame();
+      await pause(220);
+      if (activeDeal !== dealRun) return;
+      const sequence = dealSequence(start);
+      const packets = [];
+      for (let offset = 0; offset < 48; offset += 4) packets.push(sequence.slice(offset, offset + 4));
+      packets.push(sequence.slice(48, 50), ...sequence.slice(50).map(entry => [entry]));
+      for (const packet of packets) {
+        if (activeDeal !== dealRun) return;
+        game.dealingMoves = new Map();
+        for (const { index, player } of packet) {
+          const destination = (match.dealer + player) % 4;
+          const handIndex = game.hands[destination].length;
+          const sourceWorld = new THREE.Vector3();
+          wallMeshes[index].getWorldPosition(sourceWorld);
+          game.dealingMoves.set(`${destination}-${handIndex}`, sourceWorld);
+          wallMeshes[index].visible = false;
+          game.hands[destination].push(shuffled[index]);
+        }
+        const destination = (match.dealer + packet[0].player) % 4;
+        game.message = bilingual(`${playerLabel(destination, 'ko')}에게 ${packet.length}장 배패 중…`, `Dealing ${packet.length} tile${packet.length > 1 ? 's' : ''} to ${playerLabel(destination, 'en')}…`);
+        renderGame();
+        await pause(175);
+      }
+      if (activeDeal !== dealRun) return;
       for (let player = 0; player < 4; player++) {
         const flowers = game.hands[player].filter(isFlower);
         game.flowers[player].push(...flowers);
@@ -802,6 +850,7 @@
         game.hands[player] = sortTiles(game.hands[player]);
       }
       const origin = positions[start];
+      game.phase = 'discard';
       game.message = bilingual(`${match.hand}/4판 배패 · 주사위 ${dice[0]}+${dice[1]}=${total}\n${playerLabel(origin.side, 'ko')}쪽 벽 ${origin.stack + 1}번째 쌍에서 개벽\n${playerLabel(match.dealer, 'ko')} 차례 · ${match.dealer === 0 ? '패를 선택해 버리세요' : '패를 버리는 중…'}`, `Hand ${match.hand}/4 dealt · Dice ${dice[0]}+${dice[1]}=${total}\nWall opened at pair ${origin.stack + 1} on the ${playerLabel(origin.side, 'en')} side\n${playerLabel(match.dealer, 'en')}'s turn · ${match.dealer === 0 ? 'Select a tile to discard' : 'Discarding…'}`);
       renderGame();
       if (match.dealer !== 0) schedule(aiDiscard);
@@ -884,7 +933,7 @@
     }
     new ResizeObserver(resize).observe(host);
     resize();
-    function loop() { controls.update(); positionSeatBadges(); renderer.render(scene, camera); requestAnimationFrame(loop); }
+    function loop(now) { controls.update(); updateDealTweens(now); positionSeatBadges(); renderer.render(scene, camera); requestAnimationFrame(loop); }
     loop();
     applyLanguage();
   </script>
