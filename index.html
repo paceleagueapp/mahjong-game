@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3D 홍콩 마작 v0.9.1</title>
+  <title>3D 홍콩 마작 v0.9.2</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif; }
@@ -24,18 +24,18 @@
     .hands { min-width: 0; background: #1c1c1c; border: 1px solid #333; border-radius: 14px; padding: 12px; }
     .player-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .tile-count { color: #aaa; font-size: 13px; }
-    .hand { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
-    .tile2d { width: 36px; height: 48px; border-radius: 5px; background: #f7f4e9; color: #222; border-bottom: 5px solid #73a94d; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; box-shadow: 0 2px 4px #0008; }
+    .hand { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+    .tile2d { width: 42px; height: 54px; border: 2px solid #d8d1bd; border-radius: 6px; background: #f8f5e9; color: #222; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; box-shadow: 0 2px 5px #0007; }
     .tile2d.red { color: #c43832; }
     .tile2d.green { color: #26734c; }
-    .tile2d.back { background: #83bb43; border: 2px solid #d5e6b3; border-bottom: 5px solid #477b2c; }
+    .tile2d.back { background: #83bb43; border: 2px solid #d5e6b3; box-shadow: inset 0 -5px 0 #477b2c, 0 2px 5px #0007; }
     button.tile2d { padding: 0; cursor: pointer; }
     .tile2d.hint-set { box-shadow: inset 0 0 0 3px #ad87f5, 0 2px 4px #0008; }
     .tile2d.hint-pair { box-shadow: inset 0 0 0 3px #43caa2, 0 2px 4px #0008; }
     .tile2d.hint-run { box-shadow: inset 0 0 0 3px #e9b94d, 0 2px 4px #0008; }
     .tile2d.drawn { position: relative; animation: drawnFlash 5s ease-out; }
     .tile2d.drawn::after { content: '뽑음'; position: absolute; left: 50%; top: -18px; transform: translateX(-50%); padding: 1px 3px; border-radius: 4px; background: #14a8d0; color: white; font-size: 9px; white-space: nowrap; animation: drawnLabel 5s forwards; }
-    @keyframes drawnFlash { 0%, 65% { outline: 4px solid #20d9ff; box-shadow: 0 0 14px #20d9ff; transform: translateY(-6px); } 100% { outline: 0 solid transparent; box-shadow: 0 2px 4px #0008; transform: none; } }
+    @keyframes drawnFlash { 0%, 65% { outline: 4px solid #20d9ff; box-shadow: 0 0 14px #20d9ff; transform: translateY(-6px); } 100% { outline: 0 solid transparent; box-shadow: 0 2px 5px #0007; transform: none; } }
     @keyframes drawnLabel { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
     .tile2d.selected { outline: 3px solid #f5c84a; transform: translateY(-6px); }
     .hand-legend { margin-top: 8px; display: flex; gap: 7px; flex-wrap: wrap; font-size: 11px; color: #ddd; }
@@ -78,11 +78,11 @@
     .discard-viewer summary::-webkit-details-marker { display: none; }
     .discard-viewer summary::after { content: '▾'; color: #e6ce8f; }
     .discard-viewer[open] summary::after { content: '▴'; }
-    .discard-viewer strong { display: inline-block; padding: 4px 7px; border-radius: 5px; background: #f8f4e8; color: #242424; font-size: 22px; }
+    .discard-viewer strong { display: inline-block; min-width: 52px; padding: 6px 10px; border-radius: 6px; background: #f8f4e8; color: #242424; font-size: 30px; line-height: 1.15; }
     .discard-history { max-height: 190px; overflow: auto; border-top: 1px solid #759382; padding: 6px 8px; text-align: left; }
     .discard-history-row { margin: 4px 0; font-size: 11px; }
     .discard-history-row b { display: inline-block; min-width: 42px; }
-    .discard-history .smalltile { font-size: 12px; padding: 3px 5px; }
+    .discard-history .smalltile { font-size: 14px; padding: 4px 6px; }
     .melds, .discards, .flowers { margin-top: 9px; font-size: 12px; color: #bbb; line-height: 1.7; }
     .smalltile { display: inline-block; margin: 2px 2px 0 0; padding: 2px 4px; border-radius: 3px; background: #ece8d8; color: #222; font-weight: 800; }
     details.rules { margin-top: 12px; padding: 12px 14px; border: 1px solid #40584c; border-radius: 12px; background: #17251f; font-size: 14px; line-height: 1.6; }
@@ -96,7 +96,7 @@
 <body>
   <main class="app">
     <div class="bar">
-      <div><div class="title-line"><b id="appTitle">3D 홍콩 마작</b><span class="version" title="2026-09-25 배포">v0.9.1</span></div><div id="appSubtitle" style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
+      <div><div class="title-line"><b id="appTitle">3D 홍콩 마작</b><span class="version" title="2026-09-25 배포">v0.9.2</span></div><div id="appSubtitle" style="font-size:13px;color:#aaa">처음 배우는 4판 대국</div></div>
       <div class="actions"><select id="languageSelect" class="language-select" aria-label="언어"><option value="ko">한국어</option><option value="en">English</option></select><button id="deal">새 게임</button><button id="rotate" class="alt">시점 회전</button><button id="resetCam" class="alt">카메라 복귀</button></div>
     </div>
     <div id="scene" class="scene"><div id="status" class="status">3D 엔진 로딩 중…</div><details id="discardViewer" class="discard-viewer" hidden><summary><span id="latestDiscardPlayer"></span><strong id="latestDiscardTile"></strong><span id="latestDiscardState"></span></summary><div id="discardHistory" class="discard-history"></div></details><section id="result" class="result" hidden aria-live="assertive"><h2 id="resultTitle"></h2><p id="resultText"></p><div id="winDetail" class="win-detail" hidden></div><p id="resultScore" class="score"></p><button id="nextHand">다음 판</button></section></div>
@@ -290,22 +290,22 @@
       scene.add(group);
       return group;
     });
-    const discardGeometry = new THREE.BoxGeometry(.41, .1, .51);
-    const discardFaceGeometry = new THREE.PlaneGeometry(.36, .45);
+    const discardGeometry = new THREE.BoxGeometry(.62, .12, .78);
+    const discardFaceGeometry = new THREE.PlaneGeometry(.56, .70);
     const discardFaces = new Map();
     function discardMaterial(label) {
       if (discardFaces.has(label)) return discardFaces.get(label);
       const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 160;
+      canvas.width = 256;
+      canvas.height = 320;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#f7f4e9';
-      ctx.fillRect(0, 0, 128, 160);
+      ctx.fillRect(0, 0, 256, 320);
       ctx.fillStyle = label === '中' ? '#c43832' : label === '發' ? '#26734c' : '#202020';
-      ctx.font = 'bold 54px system-ui, sans-serif';
+      ctx.font = '900 112px "Malgun Gothic", system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(label, 64, 80);
+      ctx.fillText(label, 128, 160);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
@@ -320,9 +320,9 @@
           tile.add(new THREE.Mesh(discardGeometry, ivory));
           const face = new THREE.Mesh(discardFaceGeometry, discardMaterial(label));
           face.rotation.x = -Math.PI / 2;
-          face.position.y = .052;
+          face.position.y = .062;
           tile.add(face);
-          tile.position.set((index % 6 - 2.5) * .45, .05, (Math.floor(index / 6) - 1.5) * .55);
+          tile.position.set((index % 4 - 1.5) * .68, .06, (Math.floor(index / 4) - 1.35) * .82);
           group.add(tile);
         });
       });
@@ -392,7 +392,7 @@
     }
     function applyLanguage() {
       document.documentElement.lang = language;
-      document.title = L('3D 홍콩 마작 v0.9.1', '3D Hong Kong Mahjong v0.9.1');
+      document.title = L('3D 홍콩 마작 v0.9.2', '3D Hong Kong Mahjong v0.9.2');
       document.getElementById('appTitle').textContent = L('3D 홍콩 마작', '3D Hong Kong Mahjong');
       document.getElementById('appSubtitle').textContent = L('처음 배우는 4판 대국', 'A four-hand beginner match');
       document.getElementById('languageSelect').setAttribute('aria-label', L('언어', 'Language'));
